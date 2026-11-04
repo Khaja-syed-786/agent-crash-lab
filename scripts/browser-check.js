@@ -43,11 +43,15 @@ try{
     if(await evaluate(`!!document.getElementById('scenario')?.onchange && document.getElementById('history').textContent.includes('No runs')`))break;
     if(attempt===99)throw Error('Dashboard did not initialize');await delay(50);
   }
+  await mkdir('results',{recursive:true});
+  const downloadPath=await mkdtemp(resolve('results/browser-downloads-'));
+  await send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath});
   const report=await evaluate(`(async()=>{
     const $=id=>document.getElementById(id);
     const assert=(ok,message)=>{if(!ok)throw Error(message);};
     const wait=async predicate=>{for(let i=0;i<200;i++){if(predicate())return;await new Promise(r=>setTimeout(r,20));}throw Error('UI timeout: '+$('status').textContent);};
     let downloaded;
+    const originalCreateObjectURL=URL.createObjectURL,originalClick=HTMLAnchorElement.prototype.click;
     URL.createObjectURL=blob=>{downloaded=blob;return 'blob:smoke-check';};
     HTMLAnchorElement.prototype.click=function(){};
     const reports=[];
@@ -71,6 +75,11 @@ try{
           assert(r.blockedAttempts===(blocked?1:0),'wrong gateway decision');
           assert(r.taskCompleted&&r.evaluation.leakDetected===leak,'wrong outcome');
           assert(evidence.comparison.scenario===scenario,'wrong comparison scenario');
+          if($('policy')){
+            assert(evidence.schemaVersion===3&&evidence.policyVersion===policy,'wrong export policy');
+            assert(evidence.comparison.policyVersion===policy,'wrong comparison policy');
+            assert(r.events.every(e=>e.policyVersion===policy),'missing event policy');
+          }
           for(const paired of [evidence.comparison.baseline,evidence.comparison.protected])if(paired)assert(paired.scenario===scenario&&paired.policyVersion===policy,'mixed comparison');
           if(mode==='baseline')assert(evidence.comparison.protected===null,'counterpart should be empty');
           if(mode==='protected')assert(evidence.comparison.baseline&&evidence.comparison.protected,'missing counterpart');
@@ -83,15 +92,27 @@ try{
     $('export').click();const historical=JSON.parse(await downloaded.text());
     assert($('scenario').value===historical.selectedRun.scenario,'history scenario mismatch');
     if($('policy'))assert($('policy').value===historical.selectedRun.policyVersion,'history policy mismatch');
-    return reports;
+    assert($('status').textContent.includes(historical.selectedRun.policyVersion),'stale history status');
+    URL.createObjectURL=originalCreateObjectURL;HTMLAnchorElement.prototype.click=originalClick;
+    $('export').click();
+    return {checks:reports,downloadFile:'agent-crash-lab-'+historical.selectedRun.scenario+($('policy')?'-'+historical.selectedRun.policyVersion:'')+'-evidence.json'};
   })()`);
+  let downloadedEvidence;
+  for(let attempt=0;attempt<100;attempt++){
+    try{downloadedEvidence=JSON.parse(await readFile(join(downloadPath,report.downloadFile),'utf8'));break;}catch{await delay(50);}
+  }
+  if(!downloadedEvidence?.selectedRun||downloadedEvidence.comparison.scenario!==downloadedEvidence.selectedRun.scenario)throw Error('Actual evidence download failed');
+  if(downloadedEvidence.policyVersion!==downloadedEvidence.selectedRun.policyVersion)throw Error('Downloaded policy mismatch');
   if(errors.length)throw Error('Browser exceptions: '+errors.join(', '));
   await mkdir('results',{recursive:true});
   await writeFile('results/browser-check-evidence.json',JSON.stringify(report,null,2));
+  await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true},sessionId);
+  if(!await evaluate('document.documentElement.scrollWidth <= window.innerWidth'))throw Error('Mobile layout overflows');
+  await send('Emulation.setDeviceMetricsOverride',{width:1280,height:900,deviceScaleFactor:1,mobile:false},sessionId);
   const {cssContentSize}=await send('Page.getLayoutMetrics',{},sessionId);
   const screenshot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true,clip:{x:0,y:0,width:cssContentSize.width,height:cssContentSize.height,scale:1}},sessionId);
   await writeFile('results/browser-check.png',Buffer.from(screenshot.data,'base64'));
-  console.log(JSON.stringify({browser:info.Browser,checks:report.length,results:report,screenshot:'results/browser-check.png'},null,2));
+  console.log(JSON.stringify({browser:info.Browser,checks:report.checks.length,results:report.checks,download:report.downloadFile,screenshot:'results/browser-check.png'},null,2));
 }finally{
   if(socket?.readyState===WebSocket.OPEN){try{await send('Browser.close');}catch{}socket.close();}
   if(browser.exitCode===null){const closed=once(browser,'exit');browser.kill();await Promise.race([closed,delay(3000)]);}

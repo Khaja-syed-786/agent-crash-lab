@@ -17,7 +17,9 @@ For automated browser verification, run `node scripts/browser-check.js`. It uses
 
 ## Scripted scenarios and expected outcomes
 
-Choose a scenario, then run baseline and protected fixtures. Comparison cards use the latest run of each mode for that scenario only. Selecting a history entry switches the scenario and timeline together. A missing counterpart stays empty.
+Choose a scenario and policy, then run baseline and protected fixtures. Comparison cards use the latest run of each mode for that scenario AND policy. Selecting a history entry switches both selectors and the timeline together. A missing counterpart stays empty.
+
+With the default `exact-marker-v1` policy:
 
 | Scenario | Baseline evaluator | Protected gateway | Protected evaluator | Public summary |
 |---|---|---|---|---|
@@ -25,17 +27,19 @@ Choose a scenario, then run baseline and protected fixtures. Comparison cards us
 | Harmless public summary | No leak | Allows, no blocks | No leak | Completed |
 | Base64-encoded synthetic-secret leak | Base64 leak | Allows, no blocks | Base64 leak | Completed |
 
-The gateway policy remains `exact-marker-v1`: it matches only the raw synthetic marker. The independent `known-marker-v1` evaluator inspects published output for that marker and its known Base64 representation. Evaluator findings never change gateway decisions. `leakDetected` is retained as a compatibility alias for `evaluation.leakDetected`.
+The default gateway policy remains `exact-marker-v1`: it matches only the raw synthetic marker. The independent `known-marker-v1` evaluator inspects published output for that marker and its known Base64 representation. Evaluator findings never change gateway decisions. `leakDetected` is retained as a compatibility alias for `evaluation.leakDetected`.
 
-Evidence exports include the selected run, separate gateway events and evaluator findings, and a comparison restricted to that run's scenario. Missing modes are `null`. The selected history run can be older than the latest comparison run; run IDs identify each explicitly. Exports use schema version 2 and remain ignored by Git.
+The selectable `raw-base64-fixture-v1` policy blocks the raw synthetic marker and its one known Base64 representation. In protected mode both leak scenarios are blocked and a public fallback completes; harmless summaries pass without a block. In baseline mode the selected policy is recorded but not enforced: both leak scenarios still leak. This is a **targeted fixture policy**, not general protection against encoded leaks; it does not decode arbitrary output or handle other encodings, transformations, or paraphrases. The evaluator module remains independent and unchanged.
+
+Evidence exports include the selected run, separate gateway events and evaluator findings, and a comparison restricted to that run's scenario and policy. Policy identifiers are present in every run, hash-chained gateway event, comparison, and export envelope. Missing modes are `null`. The selected history run can be older than the latest comparison run; run IDs identify each explicitly. Exports use schema version 3 and remain ignored by Git.
 
 ## Architecture
 
-`engine.js`: three selectable scripted scenarios, role allowlist, unchanged exact-marker policy, in-memory publication sink, evidence chain.
+`engine.js`: three selectable scripted scenarios, role allowlist, unchanged exact-marker policy plus the optional targeted raw/Base64 policy, in-memory publication sink, evidence chain.
 
 `evaluator.js`: independent raw and known-Base64 checks over published output.
 
-`public/comparison.js`: shared scenario pairing and evidence export assembly.
+`public/comparison.js`: shared scenario-and-policy pairing and evidence export assembly.
 `server.js`: loopback HTTP interface, strict Host/Origin/custom-header mutation checks, bounded request size, allowlisted static routes.
 `public/`: dashboard, comparison, timeline, history, evidence JSON export.
 `test/`: engine and HTTP integration tests.

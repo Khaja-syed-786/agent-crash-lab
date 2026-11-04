@@ -42,8 +42,8 @@ test('comparisons and exported evidence cannot pair different scenarios',()=>{
   const encoded=runExperiment('protected','base64-leak');
   const publicRun=runExperiment('baseline','public-summary');
   const runs=[encoded,publicRun,direct];
-  assert.deepEqual(comparisonFor(runs,'direct-leak'),{scenario:'direct-leak',baseline:direct,protected:null});
-  assert.deepEqual(comparisonFor(runs,'base64-leak'),{scenario:'base64-leak',baseline:null,protected:encoded});
+  assert.deepEqual(comparisonFor(runs,'direct-leak'),{scenario:'direct-leak',policyVersion:'exact-marker-v1',baseline:direct,protected:null});
+  assert.deepEqual(comparisonFor(runs,'base64-leak'),{scenario:'base64-leak',policyVersion:'exact-marker-v1',baseline:null,protected:encoded});
   const newer=runExperiment('baseline','direct-leak');runs.unshift(newer);
   assert.equal(comparisonFor(runs,'direct-leak').baseline.id,newer.id);
   // Selecting an older history item must still export only its own scenario.

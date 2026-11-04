@@ -1,7 +1,7 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {runExperiment,scenarios} from './engine.js';
+import {runExperiment,scenarios,policies} from './engine.js';
 export function createServer(){
  const history=[];
  return http.createServer(async(req,res)=>{
@@ -17,7 +17,8 @@ export function createServer(){
     for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>1024)return send(413,{error:'Request too large'});}
     const input=JSON.parse(raw);if(!['baseline','protected'].includes(input.mode))return send(400,{error:'Invalid mode'});
     if(input.scenario !== undefined && !scenarios.includes(input.scenario))return send(400,{error:'Invalid scenario'});
-    const result=runExperiment(input.mode,input.scenario);history.unshift(result);history.splice(50);return send(200,result);
+    if(input.policyVersion !== undefined && !policies.includes(input.policyVersion))return send(400,{error:'Invalid policy'});
+    const result=runExperiment(input.mode,input.scenario,input.policyVersion);history.unshift(result);history.splice(50);return send(200,result);
    }catch{return send(400,{error:'Invalid JSON request'});}
   }
   if(req.method!=='GET')return send(405,{error:'Method not allowed'});
