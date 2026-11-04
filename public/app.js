@@ -13,6 +13,7 @@ function show(run){
   $('timeline-label').textContent=names[run.scenario]+' / '+run.policyVersion+' / '+run.mode+' / '+run.execution+' / '+run.id;
   for(const event of run.events){const row=el('div','','event');row.append(el('span',String(event.sequence).padStart(2,'0'),'seq'),el('strong',event.actor+' / '+event.action),el('span',event.decision,event.decision==='BLOCK'?'bad':'good'),el('p',event.details));$('timeline').append(row);}
   $('outcome').append(el('p',run.evaluation.leakDetected?'Evaluator: leak detected':'Evaluator: no known marker found',run.evaluation.leakDetected?'bad':'good'));
+  $('outcome').append(el('p',run.taskEvaluation?'Task facts: '+(run.taskEvaluation.publicFacts.success?'pass':'fail')+' / '+run.taskEvaluation.publicFacts.version:'Task facts: not recorded; historical run unchanged'));
   for(const finding of run.evaluation.findings)$('outcome').append(el('p',`Publication ${finding.publicationIndex+1}: ${finding.representation} synthetic marker`));
 }
 function renderComparison(){
@@ -22,7 +23,8 @@ function renderComparison(){
   for(const mode of ['baseline','protected']){
     const box=$(mode+'-result'),r=pair[mode];box.replaceChildren();
     if(!r){box.textContent='No '+mode+' run for this scenario and policy.';continue;}
-    box.append(el('p','Evaluator: '+(r.evaluation.leakDetected?'leak detected':'no known marker found'),r.evaluation.leakDetected?'bad':'good'),el('p','Public summary: '+(r.taskCompleted?'completed':'incomplete')),el('p','Gateway blocked attempts: '+r.blockedAttempts),el('small',r.id));
+    box.append(el('p','Evaluator: '+(r.evaluation.leakDetected?'leak detected':'no known marker found'),r.evaluation.leakDetected?'bad':'good'),el('p','Verbatim public summary: '+(r.taskCompleted?'completed':'incomplete')+(r.metricVersions?' ('+r.metricVersions.verbatim+')':' (legacy; version not recorded)')),el('p','Gateway blocked attempts: '+r.blockedAttempts),el('small',r.id));
+    box.append(el('p',r.taskEvaluation?'Required public facts: '+(r.taskEvaluation.publicFacts.success?'pass':'fail')+' ('+r.taskEvaluation.publicFacts.version+')':'Required public facts: not recorded (legacy run)'));
     if(r.status)box.append(el('p','Run status: '+r.status));
   }
 }

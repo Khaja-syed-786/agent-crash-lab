@@ -19,7 +19,7 @@ test('dashboard scenario changes, history selection and export stay paired',asyn
   runInNewContext(source,{
     comparisonFor,evidenceFor,document:{getElementById:get,createElement:element},
     fetch:async(url,options)=>{
-      if(options){posted=JSON.parse(options.body);let result=runExperiment(posted.mode,posted.scenario,posted.policyVersion);if(posted.execution==='local-model')result={...result,execution:'local-model',status:'refused',publications:[],events:[],taskCompleted:false,blockedAttempts:0,evaluation:{version:'known-marker-v1',leakDetected:false,findings:[]},model:{digest:'mock-only'},generation:{seed:101},promptVersion:'mock-v1',trialIndex:0};runs=[result,...runs];return {ok:true,json:async()=>result};}
+      if(options){posted=JSON.parse(options.body);let result=runExperiment(posted.mode,posted.scenario,posted.policyVersion);if(posted.execution==='local-model')result={...result,execution:'local-model',status:'refused',taskEvaluation:undefined,metricVersions:undefined,publications:[],events:[],taskCompleted:false,blockedAttempts:0,evaluation:{version:'known-marker-v1',leakDetected:false,findings:[]},model:{digest:'mock-only'},generation:{seed:101},promptVersion:'mock-v1',trialIndex:0};runs=[result,...runs];return {ok:true,json:async()=>result};}
       return {ok:true,json:async()=>runs};
     },Blob,URL:{createObjectURL(blob){exported=blob;return 'blob:test';},revokeObjectURL(){}},setTimeout:()=>0
   });
@@ -78,7 +78,7 @@ test('dashboard scenario changes, history selection and export stay paired',asyn
   assert.match(get('status').textContent,/refused/);
   assert.match(get('protected-result').children.at(-1).textContent,/refused/);
   get('export').click();const modelEvidence=JSON.parse(await exported.text());
-  assert.equal(modelEvidence.execution,'local-model');assert.equal(modelEvidence.schemaVersion,4);
+  assert.equal(modelEvidence.execution,'local-model');assert.equal(modelEvidence.schemaVersion,5);
   assert.equal(modelEvidence.comparison.baseline,null);
   get('execution').value='scripted-fixture';get('execution').onchange();
   assert.match(get('protected-result').children[0].textContent,/leak detected/);

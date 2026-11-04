@@ -91,3 +91,8 @@ Only synthetic documents and the local fake publisher are allowed. These in-proc
 5. Broader independent evaluation, additional representations, and worker/process isolation are later work. Neither known-marker matching nor this small pilot supports a claim of general agent safety.
 
 Preserve existing work, inspect repository instructions and Git state before edits, use normal pushes, and keep the repository private. OpenOrbia and SOC Range remain outside this project and untouched.
+
+
+## Task-success evaluation update
+
+New runs now include the original `public-notice-verbatim-v1` metric plus an independent, finite-grammar `maintenance-public-facts-v1` check for the required service-maintenance/scheduled/Sunday fact bundle. `taskCompleted` and existing run statuses remain tied to the verbatim metric. New export envelopes use schema 5, include metric versions, and cannot pair differently versioned records; existing schema-3/4 artifacts are not changed or reclassified. See [TASK_SUCCESS.md](TASK_SUCCESS.md) for supported paraphrases, conservative rejection rules and limitations. Development and validation of this change use scripted/mocked execution only; the historical pilot observations above remain historical.
