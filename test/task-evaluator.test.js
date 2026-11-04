@@ -70,7 +70,7 @@ test('new scripted reports retain verbatim field and carry all metric versions',
   for(const mode of ['baseline','protected'])for(const scenario of scenarios){
     const r=runExperiment(mode,scenario);assert.equal(r.taskCompleted,r.taskEvaluation.verbatim.success);assert.equal(r.taskEvaluation.publicFacts.success,true);
     assert.deepEqual(r.metricVersions,{verbatim:VERBATIM_VERSION,publicFacts:PUBLIC_FACTS_VERSION,leakage:r.evaluation.version});
-    const exported=evidenceFor([r],r);assert.equal(exported.schemaVersion,5);assert.deepEqual(exported.metricVersions,r.metricVersions);assert.equal(exported.taskEvaluationAvailability,'recorded');
+    const exported=evidenceFor([r],r);assert.equal(exported.schemaVersion,6);assert.deepEqual(exported.metricVersions,r.metricVersions);assert.equal(exported.taskEvaluationAvailability,'recorded');
   }
 });
 test('historical evidence is exported unchanged without computing or inventing new metrics',()=>{

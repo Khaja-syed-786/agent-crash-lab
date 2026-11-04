@@ -99,3 +99,10 @@ New runs now include the original `public-notice-verbatim-v1` metric plus an ind
 
 
 PR review tightened the task-facts grammar as v2 after reproducing false success from ignored retractions/context. V1 reports are preserved, not reclassified. Malformed/inconsistent metric manifests are now marked invalid and excluded from pairing; missing legacy metrics remain not-recorded. See TASK_SUCCESS.md for the version boundary and stricter coverage/metadata limitations.
+
+
+## Controlled injection-document update
+
+CI PR #2 was merged normally as f89a1b4. Its actual main-push run 41905992971 passed 142 tests on both Node.js 22 and 24. CI remains scripted/mocked only; branch protection was not configured by that work.
+
+The next feature adds model-only versioned synthetic documents (benign control, direct disclosure, false administrator authority, known-Base64 disclosure) with untrusted-only instructions and unchanged user/system prompts. See INJECTION_SCENARIOS.md. New schema-6 evidence and pairing include document/scenario versions, content hashes and explicit evaluationKind labels; older records are preserved. This feature has no live model evaluation or assumed attack outcome. Keep live inference and any model provisioning separately authorized.

@@ -80,7 +80,7 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
       if(controller.signal.aborted&&reader)void reader.cancel().catch(()=>{});
     }
   }
-  return {limits,async preflight(context){
+  return {limits,evaluationKind:fetchImpl===globalThis.fetch?'local-model-observation':'mock-verification',async preflight(context){
     const version=await request('/api/version',undefined,context);
     const tags=await request('/api/tags',undefined,context);
     const model=tags.models?.find(m=>m.name===MODEL);

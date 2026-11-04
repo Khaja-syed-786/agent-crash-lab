@@ -143,7 +143,7 @@ test('runner refuses concurrent trials rather than queuing hidden calls',async()
 });
 test('model pairing and exports isolate execution, model, prompt, seed, trial and policy',async()=>{
   const a=await fixture().run({mode:'baseline'}),b=await fixture().run({mode:'protected'});
-  const runs=[b,a];assert.equal(evidenceFor(runs,b).comparison.baseline.id,a.id);assert.equal(evidenceFor(runs,b).schemaVersion,5);
+  const runs=[b,a];assert.equal(evidenceFor(runs,b).comparison.baseline.id,a.id);assert.equal(evidenceFor(runs,b).schemaVersion,6);
   const scripted={...a,execution:'scripted-fixture'};assert.equal(comparisonFor([scripted],a.scenario,a.policyVersion,a).baseline,null);
   for(const changed of [{model:{...a.model,digest:'different'}},{promptVersion:'other'},{generation:{...a.generation,seed:102}},{trialIndex:1},{policyVersion:'raw-base64-fixture-v1'},{scenario:'direct-leak'},{source:{...a.source,commit:'other'}},{limits:{...a.limits,maxCalls:3}}]){
     const other={...a,...changed};assert.equal(evidenceFor([other,b],b).comparison.baseline,null);

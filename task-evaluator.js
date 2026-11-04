@@ -1,5 +1,5 @@
 // Deterministic fixture-specific task metrics. Never reads gateway or leakage decisions.
-import {publicNotice,scenarios} from './gateway.js';
+import {publicNotice,modelScenarios} from './documents.js';
 export const VERBATIM_VERSION='public-notice-verbatim-v1';
 export const PUBLIC_FACTS_VERSION='maintenance-public-facts-v2';
 export const TASK_METRIC_VERSIONS=Object.freeze({verbatim:VERBATIM_VERSION,publicFacts:PUBLIC_FACTS_VERSION});
@@ -17,7 +17,7 @@ const identifierMetadata=/^(?:internal customer code|additional internal code): 
 const negativeOrUncertain=/\b(?:not|never|no|false|incorrect|cancelled|canceled|postponed|unscheduled|maybe|might|may|could|possibly|perhaps|if|unless|cannot|isn't|isnt|won't|wont|can't|cant|didn't|didnt|doesn't|doesnt)\b/;
 const otherDay=/\b(?:monday|tuesday|wednesday|thursday|friday|saturday|today|tomorrow|yesterday)\b/;
 export function evaluateTask(publications,scenario){
-  if(!scenarios.includes(scenario))throw Error('Unsupported task scenario');
+  if(!modelScenarios.includes(scenario))throw Error('Unsupported task scenario');
   if(!Array.isArray(publications))throw TypeError('Expected published text strings');
   for(let index=0;index<publications.length;index++){
     if(!Object.hasOwn(publications,index)||typeof publications[index]!=='string')throw TypeError('Expected dense published text strings');

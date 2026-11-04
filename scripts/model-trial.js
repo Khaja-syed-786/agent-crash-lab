@@ -24,5 +24,5 @@ const run=await runModelTrial(settings);
 const file=`results/model-${run.scenario}-${run.mode}-${run.id}-evidence.json`;
 await mkdir('results',{recursive:true});
 await writeFile(file,JSON.stringify(evidenceFor([run,...(paired?[paired]:[])],run),null,2));
-console.log(JSON.stringify({file,status:run.status,error:run.error,calls:run.calls,revisions:run.revisions,model:run.model,actions:run.actions,publications:run.publications,taskCompleted:run.taskCompleted,taskEvaluation:run.taskEvaluation,metricVersions:run.metricVersions,evaluation:run.evaluation,blockedAttempts:run.blockedAttempts,createdAt:run.createdAt,finishedAt:run.finishedAt},null,2));
+console.log(JSON.stringify({file,status:run.status,scenarioVersion:run.scenarioVersion,document:run.document,documentDelivered:run.documentDelivered,evaluationKind:run.evaluationKind,error:run.error,calls:run.calls,revisions:run.revisions,model:run.model,actions:run.actions,publications:run.publications,taskCompleted:run.taskCompleted,taskEvaluation:run.taskEvaluation,metricVersions:run.metricVersions,evaluation:run.evaluation,blockedAttempts:run.blockedAttempts,createdAt:run.createdAt,finishedAt:run.finishedAt},null,2));
 if(run.error)process.exitCode=1;

@@ -11,12 +11,24 @@ export function metricRecordState(run){
   if(task.verbatim.version!==versions.verbatim||task.publicFacts.version!==versions.publicFacts||run.evaluation?.version!==versions.leakage)return 'invalid';
   return 'recorded';
 }
+// Absence is historical; partial provenance is invalid. No content is re-evaluated here.
+export function documentRecordState(run){
+  if(run.scenarioVersion==null&&run.document==null&&run.evaluationKind==null)return 'legacy';
+  const allowedKind=run.execution==='scripted-fixture'?run.evaluationKind==='scripted-fixture':run.execution==='local-model'&&['mock-verification','local-model-observation'].includes(run.evaluationKind);
+  if(!allowedKind)return 'invalid';
+  const doc=run.document;
+  if(typeof run.scenarioVersion!=='string'||!run.scenarioVersion.trim()||!doc||Array.isArray(doc)||typeof doc!=='object')return 'invalid';
+  if(!['id','version'].every(key=>typeof doc[key]==='string'&&doc[key].trim())||typeof doc.sha256!=='string'||! /^[a-f0-9]{64}$/.test(doc.sha256))return 'invalid';
+  return 'recorded';
+}
 export function pairingKey(run){
-  const state=metricRecordState(run);if(state==='invalid')return null;
+  const state=metricRecordState(run),documentState=documentRecordState(run);if(state==='invalid'||documentState==='invalid')return null;
   // Canonical field order: equivalent manifests must not depend on JSON key insertion order.
   const v=run.metricVersions,metricVersions=state==='legacy'?null:{verbatim:v.verbatim,publicFacts:v.publicFacts,leakage:v.leakage};
-  if(run.execution!=='local-model')return JSON.stringify({execution:'scripted-fixture',metricVersions});
-  return JSON.stringify({execution:run.execution,metricVersions,digest:run.model?.digest,promptVersion:run.promptVersion,schemaVersion:run.schemaVersion,generation:run.generation,trialIndex:run.trialIndex,source:run.source,limits:run.limits});
+  const document=documentState==='legacy'?null:{id:run.document.id,version:run.document.version,sha256:run.document.sha256};
+  const provenance={scenarioVersion:run.scenarioVersion??null,document,evaluationKind:run.evaluationKind??null};
+  if(run.execution!=='local-model')return JSON.stringify({execution:'scripted-fixture',metricVersions,...provenance});
+  return JSON.stringify({execution:run.execution,metricVersions,...provenance,digest:run.model?.digest,promptVersion:run.promptVersion,schemaVersion:run.schemaVersion,generation:run.generation,trialIndex:run.trialIndex,source:run.source,limits:run.limits});
 }
 export function comparisonFor(runs,scenario,policyVersion='exact-marker-v1',context){
   context??=runs.find(r=>r.scenario===scenario&&r.policyVersion===policyVersion&&r.execution==='scripted-fixture')??{execution:'scripted-fixture'};
@@ -29,5 +41,5 @@ export function comparisonFor(runs,scenario,policyVersion='exact-marker-v1',cont
 export function evidenceFor(runs,selected){
   if(!selected)throw Error('Select a run before exporting');
   const state=metricRecordState(selected);
-  return {schemaVersion:5,metricVersions:selected.metricVersions??null,taskEvaluationAvailability:state==='legacy'?'not-recorded':state,execution:selected.execution,scenario:selected.scenario,policyVersion:selected.policyVersion,exportedAt:new Date().toISOString(),selectedRun:selected,comparison:comparisonFor(runs,selected.scenario,selected.policyVersion,selected)};
+  return {schemaVersion:6,scenarioVersion:selected.scenarioVersion??null,document:selected.document??null,documentAvailability:documentRecordState(selected)==='legacy'?'not-recorded':documentRecordState(selected),evaluationKind:selected.evaluationKind??'not-recorded',metricVersions:selected.metricVersions??null,taskEvaluationAvailability:state==='legacy'?'not-recorded':state,execution:selected.execution,scenario:selected.scenario,policyVersion:selected.policyVersion,exportedAt:new Date().toISOString(),selectedRun:selected,comparison:comparisonFor(runs,selected.scenario,selected.policyVersion,selected)};
 }

@@ -93,7 +93,7 @@ try{
           assert($(mode+'-result').textContent.includes('Required public facts: pass'),'missing facts UI');
           assert(evidence.comparison.scenario===scenario,'wrong comparison scenario');
           if($('policy')){
-            assert(evidence.schemaVersion===5&&evidence.policyVersion===policy,'wrong export policy');
+            assert(evidence.schemaVersion===6&&evidence.policyVersion===policy,'wrong export policy');
             assert(evidence.comparison.policyVersion===policy,'wrong comparison policy');
             assert(r.events.every(e=>e.policyVersion===policy),'missing event policy');
           }
@@ -113,13 +113,27 @@ try{
         $(mode).click();await wait(()=>!$(mode).disabled);
         assert($('status').textContent.includes('safe_completion'),'mock local-model status missing');
         $('export').click();const e=JSON.parse(await downloaded.text());
-        assert(e.execution==='local-model'&&e.schemaVersion===5,'wrong model evidence');
+        assert(e.execution==='local-model'&&e.schemaVersion===6,'wrong model evidence');
         assert(e.selectedRun.model.runtimeVersion==='MOCK_BROWSER_NO_INFERENCE','mock identity missing');
         assert(e.selectedRun.publications.length===1,'mock publication missing');
         for(const r of [e.comparison.baseline,e.comparison.protected])if(r)assert(r.execution==='local-model','mixed model/scripted pair');
         if(mode==='protected')assert(e.comparison.baseline,'mock model counterpart missing');
       }
+      for(const scenario of ['injection-control','injection-direct','injection-authority','injection-base64']){
+        $('scenario').value=scenario;$('scenario').dispatchEvent(new Event('change'));
+        assert(!$('scenario').selectedOptions[0].disabled,'model document unexpectedly disabled');
+        assert($('export').disabled,'new injection selection mixed with previous scenario');
+        $('baseline').click();await wait(()=>!$('baseline').disabled);
+        $('export').click();const e=JSON.parse(await downloaded.text());
+        assert(e.selectedRun.scenario===scenario&&e.selectedRun.documentDelivered,'wrong document delivery');
+        assert(e.evaluationKind==='mock-verification','mock verification not labeled');
+        assert(e.scenarioVersion===scenario+'-model-v1','scenario version missing');
+        assert(e.document.sha256===e.selectedRun.events.find(x=>x.action==='read_document').document.sha256,'document provenance missing');
+        assert($('outcome').textContent.includes('mocked verification only'),'missing mock disclaimer');
+      }
       $('execution').value='scripted-fixture';$('execution').dispatchEvent(new Event('change'));
+      assert($('scenario').value==='public-summary','scripted selection retained a model-only document');
+      assert(Array.from($('scenario').options).filter(o=>o.dataset.modelOnly==='true').every(o=>o.disabled),'scripted injection choices not disabled');
     }
     const buttons=$('history').querySelectorAll('button');buttons[buttons.length-1].click();
     $('export').click();const historical=JSON.parse(await downloaded.text());
