@@ -1,7 +1,7 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {runExperiment} from './engine.js';
+import {runExperiment,scenarios} from './engine.js';
 export function createServer(){
  const history=[];
  return http.createServer(async(req,res)=>{
@@ -16,12 +16,13 @@ export function createServer(){
    let raw='';try{
     for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>1024)return send(413,{error:'Request too large'});}
     const input=JSON.parse(raw);if(!['baseline','protected'].includes(input.mode))return send(400,{error:'Invalid mode'});
-    const result=runExperiment(input.mode);history.unshift(result);history.splice(50);return send(200,result);
+    if(input.scenario !== undefined && !scenarios.includes(input.scenario))return send(400,{error:'Invalid scenario'});
+    const result=runExperiment(input.mode,input.scenario);history.unshift(result);history.splice(50);return send(200,result);
    }catch{return send(400,{error:'Invalid JSON request'});}
   }
   if(req.method!=='GET')return send(405,{error:'Method not allowed'});
   if(req.url==='/api/runs')return send(200,history);
-  const assets={'/':['index.html','text/html; charset=utf-8'],'/app.js':['app.js','text/javascript; charset=utf-8'],'/style.css':['style.css','text/css; charset=utf-8']};
+  const assets={'/':['index.html','text/html; charset=utf-8'],'/app.js':['app.js','text/javascript; charset=utf-8'],'/comparison.js':['comparison.js','text/javascript; charset=utf-8'],'/style.css':['style.css','text/css; charset=utf-8']};
   const asset=assets[req.url];if(!asset)return send(404,{error:'Not found'});
   try{return send(200,await readFile(new URL('./public/'+asset[0],import.meta.url)),asset[1]);}catch{return send(500,{error:'Asset unavailable'});}
  });
