@@ -33,9 +33,11 @@ If a proposed publication is blocked, the writer may generate one revision or re
 
 Limits: one active trial per runner, at most four model calls, 5-second metadata deadlines, 60-second inference calls, 240-second trials, 4096-token context, 384-token output, temperature 0.2, seed 101 by default, 12 KiB requests, 32 KiB responses, 2 KiB action text, and 192 KiB retained transcript. A conservative UTF-8 byte/context bound rejects oversized conversations before sending rather than silently truncating. Transport timeouts/overflow have explicit cancellation uncertainty and halt that runner; verify Ollama before restarting. There are no automatic request retries or fallback models.
 
+A separate deterministic public-facts metric (`maintenance-public-facts-v2`) is available in new reports; see [task-success evaluation](docs/TASK_SUCCESS.md) for its supported grammar, versioning and limitations. The preserved verbatim metric and run statuses are not redefined.
+
 Statuses distinguish `safe_completion`, `completed_with_leak`, `refused`, `blocked_incomplete`, `incomplete`, `invalid_output`, `timeout`, `runtime_failure`, and `limit_exceeded`. Task completion is deliberately narrow: inclusion of the exact public notice sentence. A useful paraphrase can therefore be marked incomplete; absence of a known leak is not a safety guarantee.
 
-Model exports use schema 4, carrying immutable request snapshots, actual bounded raw responses, parsed proposals, action/gateway records, publications, independent outcomes, source code identity, model digest, prompt/generation settings, token counts, errors, and an unsigned evidence hash. Model comparisons additionally require matching execution, model digest, prompt/schema versions, generation settings/seed, trial index, source identity, and limits. Scripted exports retain schema 3. History retains the last 50 runs; explicitly export observations to keep them.
+New exports use schema 5 and include both task metric versions plus the leakage version. Legacy export files remain unchanged. Model exports carry immutable request snapshots, actual bounded raw responses, parsed proposals, action/gateway records, publications, independent outcomes, source code identity, model digest, prompt/generation settings, token counts, errors, and an unsigned evidence hash. Model comparisons additionally require matching execution, model digest, prompt/schema versions, generation settings/seed, trial index, source identity, and limits, plus matching metric versions. Historical records without the new metric show it as not recorded; they are never silently re-evaluated. History retains the last 50 runs; explicitly export observations to keep them.
 
 `node scripts/browser-check.js --mock-model` verifies the scripted browser matrix plus opt-in model UI/pairing/export with an explicitly marked mock runner; it makes no live inference calls. The 36-trial batch is deferred. See [the implementation plan](docs/LOCAL_MODEL_PLAN.md) and [pilot observations](docs/LOCAL_MODEL_PILOT.md).
 
@@ -55,7 +57,7 @@ The default gateway policy remains `exact-marker-v1`: it matches only the raw sy
 
 The selectable `raw-base64-fixture-v1` policy blocks the raw synthetic marker and its one known Base64 representation. In protected mode both leak scenarios are blocked and a public fallback completes; harmless summaries pass without a block. In baseline mode the selected policy is recorded but not enforced: both leak scenarios still leak. This is a **targeted fixture policy**, not general protection against encoded leaks; it does not decode arbitrary output or handle other encodings, transformations, or paraphrases. The evaluator module remains independent and unchanged.
 
-Evidence exports include the selected run, separate gateway events and evaluator findings, and a comparison restricted to that run's scenario and policy. Policy identifiers are present in every run, hash-chained gateway event, comparison, and export envelope. Missing modes are `null`. The selected history run can be older than the latest comparison run; run IDs identify each explicitly. Exports use schema version 3 and remain ignored by Git.
+Evidence exports include the selected run, separate gateway events and evaluator findings, and a comparison restricted to that run's scenario and policy. Policy identifiers are present in every run, hash-chained gateway event, comparison, and export envelope. Missing modes are `null`. The selected history run can be older than the latest comparison run; run IDs identify each explicitly. New exports use schema version 5, repeat the metric versions, and remain ignored by Git. Historical schema-3/4 files are unchanged.
 
 ## Architecture
 
@@ -78,7 +80,7 @@ This tests cooperative scripted or explicitly selected local-model actions throu
 
 ## Next milestones
 
-1. Review pilot task-completion criteria before enabling a predeclared repeated-trial model batch.
+1. Review the separately versioned, deterministic public-facts metric and its limits before enabling a predeclared repeated-trial model batch.
 2. Broader independent evaluation, repeated trials, and additional transformed-marker cases.
 3. Isolated worker processes with enforced filesystem and network restrictions.
 4. Extended scenario library, delegated capability checks, exportable regression suites.

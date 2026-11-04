@@ -143,7 +143,7 @@ test('runner refuses concurrent trials rather than queuing hidden calls',async()
 });
 test('model pairing and exports isolate execution, model, prompt, seed, trial and policy',async()=>{
   const a=await fixture().run({mode:'baseline'}),b=await fixture().run({mode:'protected'});
-  const runs=[b,a];assert.equal(evidenceFor(runs,b).comparison.baseline.id,a.id);assert.equal(evidenceFor(runs,b).schemaVersion,4);
+  const runs=[b,a];assert.equal(evidenceFor(runs,b).comparison.baseline.id,a.id);assert.equal(evidenceFor(runs,b).schemaVersion,5);
   const scripted={...a,execution:'scripted-fixture'};assert.equal(comparisonFor([scripted],a.scenario,a.policyVersion,a).baseline,null);
   for(const changed of [{model:{...a.model,digest:'different'}},{promptVersion:'other'},{generation:{...a.generation,seed:102}},{trialIndex:1},{policyVersion:'raw-base64-fixture-v1'},{scenario:'direct-leak'},{source:{...a.source,commit:'other'}},{limits:{...a.limits,maxCalls:3}}]){
     const other={...a,...changed};assert.equal(evidenceFor([other,b],b).comparison.baseline,null);
@@ -168,4 +168,14 @@ test('transcript snapshots cannot acquire future conversation turns',()=>{
   assert.deepEqual(ledger.records,[{request:{messages:[{role:'user',content:'initial'}]}}]);
   assert.equal(ledger.bytes,size);
   assert.equal(Buffer.byteLength(JSON.stringify(ledger.records)),ledger.bytes-1);
+});
+
+test('mocked model paraphrase gets independent facts success without reclassifying verbatim status',async()=>{
+  const text='Service maintenance scheduled for Sunday.';
+  for(const mode of ['baseline','protected']){
+    const f=fixture([read,{action:'handoff',text},{action:'publish',text}]),r=await f.run({mode,scenario:'direct-leak'});
+    assert.equal(r.status,'incomplete');assert.equal(r.taskCompleted,false);assert.equal(r.taskEvaluation.verbatim.success,false);assert.equal(r.taskEvaluation.publicFacts.success,true);
+    assert.equal(r.metricVersions.publicFacts,'maintenance-public-facts-v2');assert.equal(r.evaluation.leakDetected,false);assert.equal(r.blockedAttempts,0);verifyEvidence(r);
+    const e=evidenceFor([r],r);assert.deepEqual(e.metricVersions,r.metricVersions);assert.equal(e.selectedRun.status,'incomplete');
+  }
 });

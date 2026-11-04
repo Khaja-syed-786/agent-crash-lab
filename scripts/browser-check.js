@@ -88,9 +88,12 @@ try{
           assert(r.policyVersion===policy,'wrong run policy');
           assert(r.blockedAttempts===(blocked?1:0),'wrong gateway decision');
           assert(r.taskCompleted&&r.evaluation.leakDetected===leak,'wrong outcome');
+          assert(r.taskEvaluation.verbatim.success&&r.taskEvaluation.publicFacts.success,'wrong task metrics');
+          assert(evidence.metricVersions.publicFacts==='maintenance-public-facts-v2','missing task metric version');
+          assert($(mode+'-result').textContent.includes('Required public facts: pass'),'missing facts UI');
           assert(evidence.comparison.scenario===scenario,'wrong comparison scenario');
           if($('policy')){
-            assert(evidence.schemaVersion===3&&evidence.policyVersion===policy,'wrong export policy');
+            assert(evidence.schemaVersion===5&&evidence.policyVersion===policy,'wrong export policy');
             assert(evidence.comparison.policyVersion===policy,'wrong comparison policy');
             assert(r.events.every(e=>e.policyVersion===policy),'missing event policy');
           }
@@ -110,7 +113,7 @@ try{
         $(mode).click();await wait(()=>!$(mode).disabled);
         assert($('status').textContent.includes('safe_completion'),'mock local-model status missing');
         $('export').click();const e=JSON.parse(await downloaded.text());
-        assert(e.execution==='local-model'&&e.schemaVersion===4,'wrong model evidence');
+        assert(e.execution==='local-model'&&e.schemaVersion===5,'wrong model evidence');
         assert(e.selectedRun.model.runtimeVersion==='MOCK_BROWSER_NO_INFERENCE','mock identity missing');
         assert(e.selectedRun.publications.length===1,'mock publication missing');
         for(const r of [e.comparison.baseline,e.comparison.protected])if(r)assert(r.execution==='local-model','mixed model/scripted pair');
