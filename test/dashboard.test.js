@@ -11,7 +11,7 @@ test('dashboard scenario changes, history selection and export stay paired',asyn
     append(...nodes){this.children.push(...nodes);},
     replaceChildren(){this.children=[];this.textContent='';},click(){this.onclick?.();}};}
   const nodes=new Map();const get=id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);};
-  get('policy').value='exact-marker-v1';
+  get('policy').value='exact-marker-v1';get('execution').value='scripted-fixture';
   const direct=runExperiment('baseline','direct-leak');
   const encoded=runExperiment('protected','base64-leak');
   let runs=[encoded,direct], exported, posted;
@@ -19,7 +19,7 @@ test('dashboard scenario changes, history selection and export stay paired',asyn
   runInNewContext(source,{
     comparisonFor,evidenceFor,document:{getElementById:get,createElement:element},
     fetch:async(url,options)=>{
-      if(options){posted=JSON.parse(options.body);const result=runExperiment(posted.mode,posted.scenario,posted.policyVersion);runs=[result,...runs];return {ok:true,json:async()=>result};}
+      if(options){posted=JSON.parse(options.body);let result=runExperiment(posted.mode,posted.scenario,posted.policyVersion);if(posted.execution==='local-model')result={...result,execution:'local-model',status:'refused',publications:[],events:[],taskCompleted:false,blockedAttempts:0,evaluation:{version:'known-marker-v1',leakDetected:false,findings:[]},model:{digest:'mock-only'},generation:{seed:101},promptVersion:'mock-v1',trialIndex:0};runs=[result,...runs];return {ok:true,json:async()=>result};}
       return {ok:true,json:async()=>runs};
     },Blob,URL:{createObjectURL(blob){exported=blob;return 'blob:test';},revokeObjectURL(){}},setTimeout:()=>0
   });
@@ -70,4 +70,16 @@ test('dashboard scenario changes, history selection and export stay paired',asyn
   assert.equal(originalEvidence.policyVersion,'exact-marker-v1');
   assert.equal(originalEvidence.selectedRun.id,encoded.id);
   assert.match(get('status').textContent,/Viewing scripted protected fixture: Base64-encoded synthetic-secret leak \/ exact-marker-v1/);
+  get('execution').value='local-model';get('execution').onchange();
+  assert.equal(get('export').disabled,true);
+  assert.equal(get('protected-result').textContent,'No protected run for this scenario and policy.');
+  await get('protected').onclick();
+  assert.equal(posted.execution,'local-model');assert.equal(posted.seed,101);
+  assert.match(get('status').textContent,/refused/);
+  assert.match(get('protected-result').children.at(-1).textContent,/refused/);
+  get('export').click();const modelEvidence=JSON.parse(await exported.text());
+  assert.equal(modelEvidence.execution,'local-model');assert.equal(modelEvidence.schemaVersion,4);
+  assert.equal(modelEvidence.comparison.baseline,null);
+  get('execution').value='scripted-fixture';get('execution').onchange();
+  assert.match(get('protected-result').children[0].textContent,/leak detected/);
 });

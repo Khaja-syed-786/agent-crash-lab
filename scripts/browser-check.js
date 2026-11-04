@@ -5,13 +5,27 @@ import {tmpdir} from 'node:os';
 import {join,resolve,dirname} from 'node:path';
 import {once} from 'node:events';
 import {createServer} from '../server.js';
+import {createModelRunner} from '../model-runner.js';
+import {LIMITS,MODEL,MODEL_DIGEST} from '../ollama.js';
+import {publicNotice} from '../gateway.js';
 
 const candidates=[process.env.LAB_BROWSER,'C:/Program Files/Google/Chrome/Application/chrome.exe','C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].filter(Boolean);
 let executable;
 for(const candidate of candidates){try{await access(candidate);executable=candidate;break;}catch{}}
 if(!executable)throw Error('Browser unavailable; set LAB_BROWSER to a Chrome/Edge executable');
 const profile=await mkdtemp(join(tmpdir(),'agent-crash-lab-browser-'));
-const server=createServer();await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const mockedModel=process.argv.includes('--mock-model');
+// Browser-only injected runner: always explicitly marked mock; never reaches Ollama.
+const mockRunner=mockedModel?createModelRunner({limits:LIMITS,
+  async preflight(){return {name:MODEL,digest:MODEL_DIGEST,runtimeVersion:'MOCK_BROWSER_NO_INFERENCE'};},
+  async chat(messages,{actor,ledger}){
+    const action=actor==='writer'?{action:'publish',text:publicNotice}:messages.some(m=>m.role==='assistant')?{action:'handoff',text:publicNotice}:{action:'read_document'};
+    const message={role:'assistant',content:JSON.stringify(action)};
+    ledger.append({kind:'mock-browser',actor,messages,output:message});
+    return {action,message,metrics:{mock:true}};
+  }
+}):undefined;
+const server=createServer(mockRunner?{modelRunner:mockRunner}:{});await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const base=`http://127.0.0.1:${server.address().port}`;
 const browser=spawn(executable,['--headless=new','--disable-gpu','--no-first-run','--no-default-browser-check','--remote-debugging-port=0',`--user-data-dir=${profile}`,'about:blank'],{stdio:'ignore',windowsHide:true});
 let socket;
@@ -87,6 +101,22 @@ try{
           reports.push({scenario,mode,policy,blockedAttempts:r.blockedAttempts,leakDetected:r.evaluation.leakDetected});
         }
       }
+    }
+    if(${mockedModel}){
+      $('execution').value='local-model';$('execution').dispatchEvent(new Event('change'));
+      $('scenario').value='public-summary';$('scenario').dispatchEvent(new Event('change'));
+      assert($('export').disabled,'scripted results mixed with model results');
+      for(const mode of ['baseline','protected']){
+        $(mode).click();await wait(()=>!$(mode).disabled);
+        assert($('status').textContent.includes('safe_completion'),'mock local-model status missing');
+        $('export').click();const e=JSON.parse(await downloaded.text());
+        assert(e.execution==='local-model'&&e.schemaVersion===4,'wrong model evidence');
+        assert(e.selectedRun.model.runtimeVersion==='MOCK_BROWSER_NO_INFERENCE','mock identity missing');
+        assert(e.selectedRun.publications.length===1,'mock publication missing');
+        for(const r of [e.comparison.baseline,e.comparison.protected])if(r)assert(r.execution==='local-model','mixed model/scripted pair');
+        if(mode==='protected')assert(e.comparison.baseline,'mock model counterpart missing');
+      }
+      $('execution').value='scripted-fixture';$('execution').dispatchEvent(new Event('change'));
     }
     const buttons=$('history').querySelectorAll('button');buttons[buttons.length-1].click();
     $('export').click();const historical=JSON.parse(await downloaded.text());

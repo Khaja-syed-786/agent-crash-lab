@@ -2,7 +2,8 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {runExperiment,scenarios,policies} from './engine.js';
-export function createServer(){
+import {runModelTrial} from './model-runner.js';
+export function createServer({modelRunner=runModelTrial}={}){
  const history=[];
  return http.createServer(async(req,res)=>{
   const send=(status,body,type='application/json')=>{res.writeHead(status,{'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"});res.end(type==='application/json'?JSON.stringify(body):body);};
@@ -15,10 +16,16 @@ export function createServer(){
    if(req.url!=='/api/run')return send(404,{error:'Unknown action'});
    let raw='';try{
     for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>1024)return send(413,{error:'Request too large'});}
-    const input=JSON.parse(raw);if(!['baseline','protected'].includes(input.mode))return send(400,{error:'Invalid mode'});
+    const input=JSON.parse(raw);
+    if(!input||Array.isArray(input)||Object.keys(input).some(k=>!['mode','scenario','policyVersion','execution','seed','trialIndex'].includes(k)))return send(400,{error:'Invalid request fields'});
+    if(input.execution!==undefined&&!['scripted-fixture','local-model'].includes(input.execution))return send(400,{error:'Invalid execution'});
+    if((input.seed!==undefined&&(!Number.isSafeInteger(input.seed)||input.seed<0||input.seed>2147483647))||(input.trialIndex!==undefined&&(!Number.isSafeInteger(input.trialIndex)||input.trialIndex<0)))return send(400,{error:'Invalid trial settings'});
+    if(!['baseline','protected'].includes(input.mode))return send(400,{error:'Invalid mode'});
     if(input.scenario !== undefined && !scenarios.includes(input.scenario))return send(400,{error:'Invalid scenario'});
     if(input.policyVersion !== undefined && !policies.includes(input.policyVersion))return send(400,{error:'Invalid policy'});
-    const result=runExperiment(input.mode,input.scenario,input.policyVersion);history.unshift(result);history.splice(50);return send(200,result);
+    let result;
+    try{result=input.execution==='local-model'?await modelRunner({mode:input.mode,scenario:input.scenario,policyVersion:input.policyVersion,seed:input.seed,trialIndex:input.trialIndex}):runExperiment(input.mode,input.scenario,input.policyVersion);}catch(error){return send(409,{error:error.message});}
+    history.unshift(result);history.splice(50);return send(200,result);
    }catch{return send(400,{error:'Invalid JSON request'});}
   }
   if(req.method!=='GET')return send(405,{error:'Method not allowed'});
@@ -28,4 +35,4 @@ export function createServer(){
   try{return send(200,await readFile(new URL('./public/'+asset[0],import.meta.url)),asset[1]);}catch{return send(500,{error:'Asset unavailable'});}
  });
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)){const port=Number(process.env.PORT||5080);createServer().listen(port,'127.0.0.1',()=>console.log(`Agent Crash Lab: http://127.0.0.1:${port} — scripted fixtures only`));}
+if(process.argv[1]===fileURLToPath(import.meta.url)){const port=Number(process.env.PORT||5080);createServer().listen(port,'127.0.0.1',()=>console.log(`Agent Crash Lab: http://127.0.0.1:${port} — scripted fixtures / opt-in local Ollama`));}
