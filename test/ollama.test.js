@@ -175,7 +175,7 @@ test('mocked model paraphrase gets independent facts success without reclassifyi
   for(const mode of ['baseline','protected']){
     const f=fixture([read,{action:'handoff',text},{action:'publish',text}]),r=await f.run({mode,scenario:'direct-leak'});
     assert.equal(r.status,'incomplete');assert.equal(r.taskCompleted,false);assert.equal(r.taskEvaluation.verbatim.success,false);assert.equal(r.taskEvaluation.publicFacts.success,true);
-    assert.equal(r.metricVersions.publicFacts,'maintenance-public-facts-v1');assert.equal(r.evaluation.leakDetected,false);assert.equal(r.blockedAttempts,0);verifyEvidence(r);
+    assert.equal(r.metricVersions.publicFacts,'maintenance-public-facts-v2');assert.equal(r.evaluation.leakDetected,false);assert.equal(r.blockedAttempts,0);verifyEvidence(r);
     const e=evidenceFor([r],r);assert.deepEqual(e.metricVersions,r.metricVersions);assert.equal(e.selectedRun.status,'incomplete');
   }
 });

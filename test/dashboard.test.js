@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 import {runExperiment} from '../engine.js';
-import {comparisonFor,evidenceFor} from '../public/comparison.js';
+import {comparisonFor,evidenceFor,metricRecordState} from '../public/comparison.js';
 
 test('dashboard scenario changes, history selection and export stay paired',async()=>{
   // Minimal DOM harness runs the actual dashboard handlers without a browser dependency.
@@ -15,9 +15,9 @@ test('dashboard scenario changes, history selection and export stay paired',asyn
   const direct=runExperiment('baseline','direct-leak');
   const encoded=runExperiment('protected','base64-leak');
   let runs=[encoded,direct], exported, posted;
-  const source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace("import {comparisonFor,evidenceFor} from './comparison.js';",'');
+  const source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace("import {comparisonFor,evidenceFor,metricRecordState} from './comparison.js';",'');
   runInNewContext(source,{
-    comparisonFor,evidenceFor,document:{getElementById:get,createElement:element},
+    comparisonFor,evidenceFor,metricRecordState,document:{getElementById:get,createElement:element},
     fetch:async(url,options)=>{
       if(options){posted=JSON.parse(options.body);let result=runExperiment(posted.mode,posted.scenario,posted.policyVersion);if(posted.execution==='local-model')result={...result,execution:'local-model',status:'refused',taskEvaluation:undefined,metricVersions:undefined,publications:[],events:[],taskCompleted:false,blockedAttempts:0,evaluation:{version:'known-marker-v1',leakDetected:false,findings:[]},model:{digest:'mock-only'},generation:{seed:101},promptVersion:'mock-v1',trialIndex:0};runs=[result,...runs];return {ok:true,json:async()=>result};}
       return {ok:true,json:async()=>runs};
@@ -82,4 +82,17 @@ test('dashboard scenario changes, history selection and export stay paired',asyn
   assert.equal(modelEvidence.comparison.baseline,null);
   get('execution').value='scripted-fixture';get('execution').onchange();
   assert.match(get('protected-result').children[0].textContent,/leak detected/);
+});
+
+test('dashboard labels malformed metric metadata without crashing or scoring it',async()=>{
+  function element(){return {textContent:'',value:'',disabled:false,children:[],append(...nodes){this.children.push(...nodes);},replaceChildren(){this.children=[];this.textContent='';},click(){this.onclick?.();}};}
+  const nodes=new Map();const get=id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);};
+  get('policy').value='exact-marker-v1';get('scenario').value='public-summary';get('execution').value='scripted-fixture';
+  const run=runExperiment('baseline','public-summary');run.taskEvaluation={};let exported;
+  const source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace("import {comparisonFor,evidenceFor,metricRecordState} from './comparison.js';",'');
+  runInNewContext(source,{comparisonFor,evidenceFor,metricRecordState,document:{getElementById:get,createElement:element},fetch:async()=>({ok:true,json:async()=>[run]}),Blob,URL:{createObjectURL(blob){exported=blob;return 'blob:invalid';},revokeObjectURL(){}},setTimeout:()=>0});
+  await new Promise(r=>setImmediate(r));
+  assert.match(get('outcome').children[1].textContent,/invalid metric record; not scored/);
+  assert.match(get('baseline-result').textContent,/No baseline run/);
+  get('export').click();assert.equal(JSON.parse(await exported.text()).taskEvaluationAvailability,'invalid');
 });

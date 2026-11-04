@@ -89,7 +89,7 @@ try{
           assert(r.blockedAttempts===(blocked?1:0),'wrong gateway decision');
           assert(r.taskCompleted&&r.evaluation.leakDetected===leak,'wrong outcome');
           assert(r.taskEvaluation.verbatim.success&&r.taskEvaluation.publicFacts.success,'wrong task metrics');
-          assert(evidence.metricVersions.publicFacts==='maintenance-public-facts-v1','missing task metric version');
+          assert(evidence.metricVersions.publicFacts==='maintenance-public-facts-v2','missing task metric version');
           assert($(mode+'-result').textContent.includes('Required public facts: pass'),'missing facts UI');
           assert(evidence.comparison.scenario===scenario,'wrong comparison scenario');
           if($('policy')){
