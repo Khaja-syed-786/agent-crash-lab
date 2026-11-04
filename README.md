@@ -15,6 +15,10 @@ Open http://127.0.0.1:5080. Use this exact loopback address. Click Run baseline,
 
 For automated browser verification, run `node scripts/browser-check.js`. It uses a locally installed Chrome/Edge (or `LAB_BROWSER`), requires no packages, and writes ignored evidence and a screenshot under `results/`.
 
+## Continuous integration
+
+[The Tests workflow](.github/workflows/tests.yml) runs `npm test` on Node.js 22 and 24 for pull requests and pushes to `main`. It uses read-only repository permissions, disables persisted checkout credentials and dependency caching, cancels superseded runs, and limits each job to five minutes. There is no dependency installation because `package.json` has no dependencies. No custom secrets, Ollama runtime, live inference, paid API or model download is required. The workflow alone does not make checks required; branch protection must be configured separately.
+
 ## Opt-in local Ollama trials
 
 Scripted mode remains the default; `npm test` requires no running Ollama or installed model. Choose Local Ollama in the dashboard for one trial, or explicitly run:
