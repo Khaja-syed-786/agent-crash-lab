@@ -1,7 +1,8 @@
 // Explicitly invoked single live trial; never imported by npm test.
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve,relative,isAbsolute} from 'node:path';
-import {runModelTrial} from '../model-runner.js';
+import {runModelTrial,sourceIdentity} from '../model-runner.js';
+import {validatePairForTrial} from '../pair-validation.js';
 import {evidenceFor} from '../public/comparison.js';
 const args=process.argv.slice(2),settings={scenario:'public-summary',mode:'baseline',policyVersion:'exact-marker-v1',seed:101,trialIndex:0};
 let pairedFile;
@@ -18,6 +19,8 @@ if(pairedFile){
   const root=resolve('results'),target=resolve(pairedFile),within=relative(root,target);
   if(!within||within.startsWith('..')||isAbsolute(within))throw Error('Pair evidence must be under results/');
   paired=JSON.parse(await readFile(target,'utf8')).selectedRun;
+  // Unsigned consistency only; rejects edited/truncated counterparts before any runtime contact.
+  validatePairForTrial(paired,settings,sourceIdentity());
 }
 console.log('Starting ONE live local Ollama trial: '+JSON.stringify(settings));
 const run=await runModelTrial(settings);

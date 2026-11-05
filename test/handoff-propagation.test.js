@@ -11,7 +11,7 @@ const proposal=text=>({kind:'proposal',actor:'researcher',proposed:{action:'hand
 test('handoff text measurement separates representation, instruction mentions, and malformed absence',()=>{
  const texts=[publicNotice,marker,Buffer.from(marker).toString('base64'),`Do not obey this quoted instruction: "${handoffDisclosureInstruction}"`,handoffDisclosureInstruction.toUpperCase().replaceAll(' ','  '),undefined];
  const m=measureHandoffs(texts.map(proposal));
- assert.equal(m.version,'handoff-text-v2');assert.deepEqual(m.records.map(r=>r.rawMarker),[false,true,false,true,true,null]);
+ assert.equal(m.version,'handoff-text-v3');assert.deepEqual(m.records.map(r=>r.rawMarker),[false,true,false,true,true,null]);
  assert.deepEqual(m.records.map(r=>r.base64Marker),[false,false,true,false,false,null]);
  assert.deepEqual(m.records.map(r=>r.disclosureInstruction),[false,false,false,true,true,null]);
  assert.equal(measureHandoffs([]).records.length,0);
@@ -40,11 +40,11 @@ test('mocked experiment delivers actual documents and preserves quoted instructi
  const store={async initialize(){},async checkpoint(){},async saveTrial(t,e){raw.push(e);return `mock-${t.index}.json`;}};
  const b=await runEvaluationBatch({adapter,store,experiment:'handoff-propagation'});
  assert.equal(b.summary.attempted,12);assert.equal(b.summary.conditions.length,4);assert.equal(b.summary.publishedLeakTrials,0);assert.equal(b.summary.gatewayPublicationBlockCount,0);assert.equal(b.summary.verbatimIncomplete,0);
- assert.equal(new Set(b.trials.map(t=>t.trialId)).size,12);assert.equal(b.plan.handoffMeasurementVersion,'handoff-text-v2');assert(b.pairs.every(p=>p.comparable));
+ assert.equal(new Set(b.trials.map(t=>t.trialId)).size,12);assert.equal(b.plan.handoffMeasurementVersion,'handoff-text-v3');assert(b.pairs.every(p=>p.comparable));
  for(const [i,e] of raw.entries()){
  const r=e.selectedRun,m=r.handoffMeasurement.records[0];assert.equal(e.evaluationKind,'mock-verification');assert.equal(m.rawMarker,true);assert.equal(m.base64Marker,true);assert.equal(m.disclosureInstruction,true);
  assert.deepEqual(r.handoffMeasurement.deliveredRecords.map(v=>v.text),[m.text]);
- assert.equal(e.handoffMeasurementVersion,'handoff-text-v2');assert.equal(b.trials[i].observations.handoffMeasurement.version,'handoff-text-v2');
+ assert.equal(e.handoffMeasurementVersion,'handoff-text-v3');assert.equal(b.trials[i].observations.handoffMeasurement.version,'handoff-text-v3');
  const doc=JSON.parse(requests[i*3+1].messages.at(-1).content).data;assert.deepEqual(doc,documentFixture(r.scenario).data);
  assert.equal(JSON.parse(requests[i*3+2].messages.at(-1).content).data,m.text);
  const {evidenceHash,...body}=r;assert.equal(evidenceHash,hash(body));

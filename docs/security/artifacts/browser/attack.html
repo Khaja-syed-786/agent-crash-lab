@@ -1,0 +1,95 @@
+<!doctype html><html><head><meta charset="utf-8"><title>hostile</title></head><body>
+<h1>hostile cross-origin page</h1>
+<iframe name="sink" style="display:none"></iframe>
+<div id="out">running...</div>
+<script>
+const q=new URLSearchParams(location.search);
+const LAB=q.get('lab');            // e.g. http://127.0.0.1:5099
+const REBIND=q.get('rebind');      // e.g. http://evil.test:5099 (mapped to 127.0.0.1 via host-resolver-rules)
+const RUNBODY=JSON.stringify({mode:'baseline',scenario:'direct-leak',policyVersion:'exact-marker-v1'});
+const results=[];
+const rec=(name,o)=>results.push(Object.assign({name},o));
+const withTimeout=(p,ms,tag)=>Promise.race([p,new Promise(r=>setTimeout(()=>r({__timeout:tag}),ms))]);
+
+function loadTag(kind,url){ // img or script GET probe
+  return new Promise(res=>{
+    const el=document.createElement(kind);
+    let done=false;const fin=ev=>{if(done)return;done=true;res(ev);};
+    el.onload=()=>fin('load');el.onerror=()=>fin('error');
+    el.src=url;document.body.appendChild(el);
+    setTimeout(()=>fin('timeout'),4000);
+  });
+}
+
+async function run(){
+  // 1. CORS fetch POST /api/run WITH X-Lab-Request (triggers preflight)
+  try{const r=await fetch(LAB+'/api/run',{method:'POST',mode:'cors',headers:{'Content-Type':'application/json','X-Lab-Request':'1'},body:RUNBODY});
+      let body=null;try{body=await r.text();}catch(e){body='READ_ERR:'+e.name;}
+      rec('1_cors_post_with_xlr',{clientResolved:true,status:r.status,bodyReadable:true,body:body.slice(0,80)});
+  }catch(e){rec('1_cors_post_with_xlr',{clientResolved:false,error:e.name+':'+e.message});}
+
+  // 2. CORS fetch POST /api/run WITHOUT X-Lab-Request (app/json still preflights)
+  try{const r=await fetch(LAB+'/api/run',{method:'POST',mode:'cors',headers:{'Content-Type':'application/json'},body:RUNBODY});
+      let body=null;try{body=await r.text();}catch(e){body='READ_ERR:'+e.name;}
+      rec('2_cors_post_no_xlr',{clientResolved:true,status:r.status,body:String(body).slice(0,80)});
+  }catch(e){rec('2_cors_post_no_xlr',{clientResolved:false,error:e.name+':'+e.message});}
+
+  // 3. no-cors POST with X-Lab-Request (custom header disallowed in no-cors -> dropped)
+  try{const r=await fetch(LAB+'/api/run',{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json','X-Lab-Request':'1'},body:RUNBODY});
+      rec('3_nocors_post_xlr',{clientResolved:true,type:r.type,status:r.status});
+  }catch(e){rec('3_nocors_post_xlr',{clientResolved:false,error:e.name+':'+e.message});}
+
+  // 4. no-cors text/plain simple POST (NO preflight -> request is SENT to server)
+  try{const r=await fetch(LAB+'/api/run',{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:RUNBODY});
+      let body='opaque';try{body=await r.text();}catch(e){body='READ_ERR:'+e.name;}
+      rec('4_nocors_textplain_post',{clientResolved:true,type:r.type,status:r.status,body:String(body).slice(0,40)});
+  }catch(e){rec('4_nocors_textplain_post',{clientResolved:false,error:e.name+':'+e.message});}
+
+  // 5. auto-submitting HTML form POST (simple request, enctype text/plain), target hidden iframe
+  try{
+    const f=document.createElement('form');f.action=LAB+'/api/run';f.method='POST';f.enctype='text/plain';f.target='sink';
+    const i=document.createElement('input');i.name=RUNBODY;i.value='';f.appendChild(i);document.body.appendChild(f);
+    f.submit();
+    rec('5_form_post_textplain',{submitted:true,note:'request sent to server; cross-origin response not readable by page'});
+  }catch(e){rec('5_form_post_textplain',{submitted:false,error:e.name+':'+e.message});}
+
+  // 6. <img> GET /api/runs (request sent; body not readable)
+  {const ev=await loadTag('img',LAB+'/api/runs?img='+Date.now());rec('6_img_get_runs',{event:ev,bodyReadable:false});}
+
+  // 7. <script> GET /api/runs (request sent; JSON parse error; body not readable as data)
+  {const ev=await loadTag('script',LAB+'/api/runs?script='+Date.now());rec('7_script_get_runs',{event:ev,bodyReadable:false});}
+
+  // 8. fetch GET /api/runs mode cors + try to READ response (the key question)
+  try{const r=await fetch(LAB+'/api/runs',{mode:'cors'});
+      let body=null;try{body=await r.text();}catch(e){body='READ_ERR:'+e.name;}
+      rec('8_fetch_get_runs_cors_read',{clientResolved:true,status:r.status,bodyReadable:true,bodyLen:(body||'').length,bodySample:String(body).slice(0,120)});
+  }catch(e){rec('8_fetch_get_runs_cors_read',{clientResolved:false,readable:false,error:e.name+':'+e.message});}
+
+  // 9. fetch GET /api/runs mode no-cors (opaque; cannot read)
+  try{const r=await fetch(LAB+'/api/runs',{mode:'no-cors'});
+      let body='opaque';try{body=await r.text();}catch(e){body='READ_ERR:'+e.name;}
+      rec('9_fetch_get_runs_nocors',{clientResolved:true,type:r.type,status:r.status,bodySample:String(body).slice(0,40)});
+  }catch(e){rec('9_fetch_get_runs_nocors',{clientResolved:false,error:e.name+':'+e.message});}
+
+  // 10. iframe the dashboard (CSP frame-ancestors none should block)
+  await new Promise(res=>{
+    const fr=document.createElement('iframe');let done=false;const fin=o=>{if(done)return;done=true;rec('10_iframe_dashboard',o);res();};
+    fr.onload=()=>{let readable=false,sample=null;try{sample=fr.contentDocument?fr.contentDocument.body.innerHTML.slice(0,40):null;readable=!!fr.contentDocument;}catch(e){sample='X-ORIGIN_BLOCKED:'+e.name;}
+      fin({event:'load',contentReadable:readable,sample});};
+    fr.onerror=()=>fin({event:'error'});
+    fr.src=LAB+'/';document.body.appendChild(fr);setTimeout(()=>fin({event:'timeout'}),4000);
+  });
+
+  // 11. rebinding-style name (Host: evil.test:PORT) -> server Host regex should 403
+  if(REBIND){
+    try{const r=await fetch(REBIND+'/api/runs',{mode:'cors'});
+        let body=null;try{body=await r.text();}catch(e){body='READ_ERR:'+e.name;}
+        rec('11_rebind_host',{clientResolved:true,status:r.status,bodySample:String(body).slice(0,80)});
+    }catch(e){rec('11_rebind_host',{clientResolved:false,error:e.name+':'+e.message});}
+  }
+
+  window.__results=results;
+  document.getElementById('out').textContent='DONE '+results.length;
+}
+run();
+</script></body></html>

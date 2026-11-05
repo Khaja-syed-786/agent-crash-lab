@@ -7,10 +7,13 @@ import {documentFixture} from './documents.js';
 import {hash} from './gateway.js';
 import {TASK_METRIC_VERSIONS} from './task-evaluator.js';
 import {evaluatePublications,LEAK_EVALUATOR_VERSION} from './evaluator.js';
-import {createOllamaAdapter,adapterEvaluationKind,MODEL,MODEL_DIGEST,OPTIONS,PROMPT_VERSION,LIMITS,boundedLimits,validateAction} from './ollama.js';
+import {createOllamaAdapter,adapterEvaluationKind,MODEL,MODEL_DIGEST,OPTIONS,PROMPT_VERSION,STATUS_TAXONOMY_VERSION,LIMITS,boundedLimits,validateAction} from './ollama.js';
 import {createModelRunner} from './model-runner.js';
 import {pairingKey,evidenceFor} from './public/comparison.js';
 export const RUNNER_VERSION='controlled-pilot-v2';
+// pilot-summary-v2 keeps every v1 field and meaning (outcomesRecorded = trials with saved observations) and adds
+// integrity-validated counts. Summaries without summaryVersion are v1 and are not recomputed.
+export const SUMMARY_VERSION='pilot-summary-v2';
 export const BATCH_LIMIT_MS=30*60*1000;
 const SEEDS=[101,102,103],SCENARIOS=['injection-control','injection-direct'];
 export function buildEvaluationPlan(experiment='original'){
@@ -21,7 +24,7 @@ export function buildEvaluationPlan(experiment='original'){
     const fixture=documentFixture(scenario),modes=trialIndex%2?['protected','baseline']:['baseline','protected'];
     for(const mode of modes)trials.push({index:trials.length,slotId:`${scenario}:${mode}:${seed}`,pairId:`${scenario}:${seed}`,settings:{mode,scenario,policyVersion:'exact-marker-v1',seed,trialIndex},scenarioVersion:fixture.scenarioVersion,document:fixture.document,matchedControl:fixture.matchedControl});
   }
-  return {...(experiment==='writer-boundary'?{experimentVersion:'controlled-writer-boundary-v1',inputOrigin:'host-supplied-synthetic',writerInputVersion:WRITER_INPUT_VERSION}:{}),...(experiment==='handoff-propagation'?{experimentVersion:'handoff-propagation-v1',handoffMeasurementVersion:HANDOFF_MEASUREMENT_VERSION}:{}),version:RUNNER_VERSION,planned:12,model:{name:MODEL,digest:MODEL_DIGEST},metricVersions:{...TASK_METRIC_VERSIONS,leakage:LEAK_EVALUATOR_VERSION},promptVersion:PROMPT_VERSION,generation:{...OPTIONS},seeds:[...SEEDS],scenarios:[...selectedScenarios],batchLimitMs:BATCH_LIMIT_MS,trialLimits:{...LIMITS},trials};
+  return {...(experiment==='writer-boundary'?{experimentVersion:'controlled-writer-boundary-v1',inputOrigin:'host-supplied-synthetic',writerInputVersion:WRITER_INPUT_VERSION}:{}),...(experiment==='handoff-propagation'?{experimentVersion:'handoff-propagation-v1',handoffMeasurementVersion:HANDOFF_MEASUREMENT_VERSION}:{}),version:RUNNER_VERSION,planned:12,model:{name:MODEL,digest:MODEL_DIGEST},metricVersions:{...TASK_METRIC_VERSIONS,leakage:LEAK_EVALUATOR_VERSION},promptVersion:PROMPT_VERSION,statusTaxonomyVersion:STATUS_TAXONOMY_VERSION,generation:{...OPTIONS},seeds:[...SEEDS],scenarios:[...selectedScenarios],batchLimitMs:BATCH_LIMIT_MS,trialLimits:{...LIMITS},trials};
 }
 export function trialObservations(run){
   const proposals=[];
@@ -44,10 +47,13 @@ function summarizeTrials(trials){
     outcomesRecorded:observed.length,unresolvedAttempts:attempted.length-observed.length,statusCounts:statuses,
     executionErrors:count(o=>o.executionError)+attempted.filter(t=>t.status==='runner_error').length,refusals:count(o=>o.refused),verbatimIncomplete:count(o=>!o.verbatimTaskSuccess),publicFactsIncomplete:count(o=>!o.publicFactsTaskSuccess),
     attemptedDisclosureTrials:count(o=>o.markerBearingProposals>0),publishedLeakTrials:count(o=>o.publishedLeak),trialsWithGatewayBlocks:count(o=>o.gatewayPublicationBlocks>0),
-    acceptedPublicationCount:observed.reduce((n,t)=>n+t.observations.acceptedPublications,0),gatewayPublicationBlockCount:observed.reduce((n,t)=>n+t.observations.gatewayPublicationBlocks,0)};
+    acceptedPublicationCount:observed.reduce((n,t)=>n+t.observations.acceptedPublications,0),gatewayPublicationBlockCount:observed.reduce((n,t)=>n+t.observations.gatewayPublicationBlocks,0),
+    // v2 additions: an observation saved before a plan/context integrity check failed is still recorded, but is not a validated outcome.
+    integrityRejectedOutcomes:observed.filter(t=>t.integrity==='rejected').length,integrityUncheckedOutcomes:observed.filter(t=>t.integrity!=='validated'&&t.integrity!=='rejected').length,
+    validatedOutcomes:observed.filter(t=>t.integrity==='validated').length,comparableOutcomes:observed.filter(t=>t.integrity==='validated'&&t.comparisonValid===true).length};
 }
 export function summarizeEvaluation(batch){
-  return {metricVersions:batch.plan?.metricVersions??null,...summarizeTrials(batch.trials),batchErrors:batch.error?1:0,
+  return {summaryVersion:SUMMARY_VERSION,metricVersions:batch.plan?.metricVersions??null,...summarizeTrials(batch.trials),batchErrors:batch.error?1:0,
     conditions:(batch.plan?.scenarios??SCENARIOS).flatMap(scenario=>['baseline','protected'].map(mode=>({scenario,mode,...summarizeTrials(batch.trials.filter(t=>t.settings.scenario===scenario&&t.settings.mode===mode))})))};
 }
 
@@ -83,7 +89,7 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
       try{run=await runTrial(trial.settings);}catch(error){
         trial.status='runner_error';trial.error=String(error.message).slice(0,512);batch.stopReason='runner_error';await checkpoint();break;
       }
-      trial.status=run.status;trial.observations=trialObservations(run);trial.runId=run.id;
+      trial.status=run.status;trial.observations=trialObservations(run);trial.runId=run.id;trial.integrity='pending';
       runs.unshift(run);
       trial.evidenceFile=await store.saveTrial(trial,{...evidenceFor(runs,run),batchId:id,slotId:trial.slotId,trialId:trial.trialId});
       if(plan.writerInputVersion&&(run.writerInput?.version!==plan.writerInputVersion||run.inputOrigin!==plan.inputOrigin||run.experimentVersion!==plan.experimentVersion||run.writerInput.sha256!==trial.document.sha256||run.writerInput.confirmedDeliveries.some(d=>!d.matchesSupplied)))throw Error('Writer input identity changed');
@@ -92,6 +98,7 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
       if(run.scenarioVersion!==trial.scenarioVersion||hash(run.document)!==hash(trial.document)||hash(run.matchedControl)!==hash(trial.matchedControl))throw Error('Planned document identity changed');
       if(run.model.verified&&(run.model.digest!==plan.model.digest||run.model.name!==plan.model.name))throw Error('Model identity changed');
       if(hash(run.metricVersions)!==hash(plan.metricVersions))throw Error('Metric versions changed from plan');
+      if(run.statusTaxonomyVersion!==plan.statusTaxonomyVersion)throw Error('Status taxonomy version changed from plan');
       if(run.promptVersion!==plan.promptVersion||hash(run.generation)!==hash({...plan.generation,seed:trial.settings.seed}))throw Error('Initial prompt or generation settings changed');
       if(run.model.verified){
         const {seed:ignoredSeed,...generation}=run.generation;
@@ -99,6 +106,7 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
         if(batch.initialContext&&hash(context)!==hash(batch.initialContext))throw Error('Initial execution context changed');
         batch.initialContext??=context;
       }
+      trial.integrity='validated';
       const key=pairingKey(run),previous=pairs.get(trial.pairId);
       trial.comparisonValid=run.model.verified===true&&key!==null&&(!previous||previous===key);
       // Raw evidence was saved before validating the declared plan context.
@@ -110,10 +118,11 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
     }
   }catch(error){
     batch.stopReason='evidence_or_integrity_error';batch.error=String(error.message).slice(0,512);
+    for(const trial of batch.trials)if(trial.integrity==='pending'){trial.integrity='rejected';trial.integrityError=batch.error;}
     // Return the attempted/unknown counts; never pretend missing raw evidence was saved.
   }
   for(const trial of batch.trials)if(!trial.attempted)trial.status=batch.stopReason==='batch_budget'?'not_run_budget':batch.stopReason?'not_run_stopped':'not_run';
-  batch.pairs=[...new Set(plan.trials.map(t=>t.pairId))].map(pairId=>{const pair=batch.trials.filter(t=>t.pairId===pairId);return {pairId,trialIndices:pair.map(t=>t.index),bothAttempted:pair.every(t=>t.attempted),outcomesRecorded:pair.filter(t=>t.observations).length,comparable:pair.every(t=>t.observations&&t.comparisonValid),bothDocumentsDelivered:pair.every(t=>t.observations?.documentDelivered),...(experiment==='writer-boundary'?{bothWriterInputsConfirmed:pair.every(t=>t.observations?.writerInput?.confirmedDeliveries.length>0)}:{})};});
+  batch.pairs=[...new Set(plan.trials.map(t=>t.pairId))].map(pairId=>{const pair=batch.trials.filter(t=>t.pairId===pairId);return {pairId,trialIndices:pair.map(t=>t.index),bothAttempted:pair.every(t=>t.attempted),outcomesRecorded:pair.filter(t=>t.observations).length,comparable:pair.every(t=>t.observations&&t.comparisonValid),bothDocumentsDelivered:pair.every(t=>t.observations?.documentDelivered),...(experiment==='writer-boundary'?{bothWriterInputsConfirmed:pair.every(t=>t.observations?.writerInput?.confirmedDeliveries.length>0),bothWriterInputsModelValidated:pair.every(t=>t.observations?.writerInput?.validatedModelDeliveryCount>0)}:{})};});
   batch.status=batch.stopReason?'stopped':'completed';batch.finishedAt=new Date().toISOString();
   await checkpoint();return batch;
 }

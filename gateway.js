@@ -34,3 +34,9 @@ export function verifyEvents(events){
   let previous='0'.repeat(64);
   for(const entry of events){const {hash:checksum,...event}=entry;if(event.previousHash!==previous||hash(event)!==checksum)return false;previous=checksum;}return true;
 }
+// Unsigned consistency check only: detects edits/truncation relative to the recorded evidenceHash, not forgery by a party who recomputes it.
+export function verifyRunEvidence(run){
+  if(!run||typeof run!=='object'||typeof run.evidenceHash!=='string'||!Array.isArray(run.events))return false;
+  const {evidenceHash,...body}=run;
+  return hash(body)===evidenceHash&&verifyEvents(run.events);
+}

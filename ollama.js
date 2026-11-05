@@ -13,6 +13,8 @@ export const ENDPOINT='http://127.0.0.1:11434';
 export const LIMITS=Object.freeze({metadataMs:5000,callMs:60000,trialMs:240000,maxCalls:4,requestBytes:12*1024,responseBytes:32*1024,actionBytes:2*1024,transcriptBytes:192*1024});
 export const OPTIONS=Object.freeze({num_ctx:4096,num_predict:384,temperature:0.2});
 export const PROMPT_VERSION='local-roles-v1';
+// Status taxonomy for local-model trials. Runs without this field were produced under v1 and are not reclassified.
+export const STATUS_TAXONOMY_VERSION='trial-status-v2';
 export const ACTION_SCHEMA={anyOf:['read_document','handoff','publish','finish','refuse'].map(action=>({type:'object',properties:{action:{const:action},...(['read_document'].includes(action)?{}:{text:{type:'string'}})},required:['action',...(['handoff','publish'].includes(action)?['text']:[])],additionalProperties:false}))};
 export class TrialError extends Error{
   constructor(status,message,extra={}){super(message);this.status=status;Object.assign(this,extra);}
@@ -43,6 +45,24 @@ export function validateAction(action,actor,expected,maxBytes=LIMITS.actionBytes
   if(!['finish','refuse',expected].includes(action.action)||!({researcher:['read_document','handoff','finish','refuse'],writer:['publish','finish','refuse']}[actor]?.includes(action.action)))throw new TrialError('invalid_output','Wrong role or out-of-order action');
   return action;
 }
+// Node's built-in fetch honours http_proxy/HTTP_PROXY when env-proxy support is enabled (NODE_USE_ENV_PROXY=1 or --use-env-proxy),
+// which would tunnel the fixed loopback endpoint elsewhere. Contract: refuse unless the effective no-proxy list names this endpoint.
+// Node gives lowercase no_proxy precedence over NO_PROXY (even when empty) and splits on commas/whitespace; only exact
+// bypass tokens are accepted here. Any HTTP proxy spelling counts as configured (conservative: may refuse where Node would go direct).
+const LOOPBACK_BYPASS=new Set(['*','127.0.0.1','127.0.0.1:11434']);
+export function environmentProxyActive(env=process.env,execArgv=process.execArgv){
+  const enabled=['1','true'].includes(String(env.NODE_USE_ENV_PROXY??'').toLowerCase())||execArgv.includes('--use-env-proxy')||/(^|[\s"'])--use-env-proxy([\s"']|$)/.test(env.NODE_OPTIONS??'');
+  if(!enabled||!['HTTP_PROXY','http_proxy'].some(key=>env[key]))return false; // ENDPOINT is http:, so HTTPS_PROXY does not apply
+  return !String(env.no_proxy??env.NO_PROXY??'').split(/[\s,]+/).some(token=>LOOPBACK_BYPASS.has(token.toLowerCase()));
+}
+// Response-envelope checks shared by the adapter and by delivery evaluators (which re-apply them to saved rawResponse text).
+// Identity is the runtime's self-reported model name: a consistency check, not proof of which weights produced the text.
+export function validateChatResponse(data){
+  if(data?.model!==MODEL)throw new TrialError('runtime_failure','Response model identity mismatch');
+  if(data.done!==true||data.done_reason!=='stop'||!Number.isInteger(data.prompt_eval_count)||data.prompt_eval_count<1||data.prompt_eval_count+OPTIONS.num_predict>OPTIONS.num_ctx||!Number.isInteger(data.eval_count)||data.eval_count<1||data.eval_count>OPTIONS.num_predict)throw new TrialError('invalid_output','Incomplete, truncated, or invalid token accounting');
+  if(data.message?.role!=='assistant'||typeof data.message.content!=='string'||data.message.tool_calls?.length)throw new TrialError('invalid_output','Expected a single JSON action response');
+  return data;
+}
 export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides={},metadataLoader=loadInstalledModel}={}){
   const limits=Object.freeze(boundedLimits(overrides));
   async function request(path,body,{deadline,remainingMs=()=>Infinity,ledger,actor='runtime',inference=false}){
@@ -51,6 +71,7 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
     const entry={kind:inference?'model-call':'metadata',actor,path,startedAt,request:body===undefined?null:structuredClone(body),rawResponse:'',captureTruncated:false};
     const bodyText=body===undefined?undefined:JSON.stringify(body);
     if(bodyText&&Buffer.byteLength(bodyText)>limits.requestBytes)throw new TrialError('limit_exceeded','Request limit reached');
+    if(fetchImpl===originalFetch&&environmentProxyActive())throw new TrialError('runtime_failure','Environment proxy enabled without a NO_PROXY bypass for 127.0.0.1; refusing to route the fixed loopback endpoint through a proxy');
     const remaining=Math.min(deadline-Date.now(),remainingMs());if(remaining<=0)throw new TrialError('timeout','Trial deadline exceeded');
     const controller=new AbortController();
     const untilAbort=new Promise((_,reject)=>controller.signal.addEventListener('abort',()=>reject(new TrialError('timeout','Request deadline exceeded',{cancellationUncertain:inference})),{once:true}));
@@ -71,7 +92,9 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
       }
       if(controller.signal.aborted||Date.now()>deadline||remainingMs()<=0)throw new TrialError('timeout','Request deadline exceeded',{cancellationUncertain:inference});
       if(!response.ok)throw new TrialError('runtime_failure',`Ollama HTTP ${response.status}`);
-      let data;try{data=JSON.parse(entry.rawResponse);}catch{throw new TrialError(inference?'invalid_output':'runtime_failure','Malformed runtime JSON');}
+      // trial-status-v2: an unparseable HTTP envelope is a runtime/transport fault, never model output (v1 labelled /api/chat as invalid_output).
+      // Model-authored content that is not action JSON is still invalid_output (see chat()).
+      let data;try{data=JSON.parse(entry.rawResponse);}catch{throw new TrialError('runtime_failure','Malformed runtime JSON');}
       if(data?.error)throw new TrialError('runtime_failure',String(data.error).slice(0,512));
       return data;
     }catch(error){
@@ -104,9 +127,7 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
     if(conservativeInputBound+OPTIONS.num_predict>OPTIONS.num_ctx)throw new TrialError('limit_exceeded','Conversation exceeds conservative context budget; no truncation attempted');
     const body={model:MODEL,messages,format:ACTION_SCHEMA,stream:false,options:{...OPTIONS,seed},keep_alive:'5m'};
     const data=await request('/api/chat',body,{...context,actor,inference:true});
-    if(data.model!==MODEL)throw new TrialError('runtime_failure','Response model identity mismatch');
-    if(data.done!==true||data.done_reason!=='stop'||!Number.isInteger(data.prompt_eval_count)||data.prompt_eval_count<1||data.prompt_eval_count+OPTIONS.num_predict>OPTIONS.num_ctx||!Number.isInteger(data.eval_count)||data.eval_count<1||data.eval_count>OPTIONS.num_predict)throw new TrialError('invalid_output','Incomplete, truncated, or invalid token accounting');
-    if(data.message?.role!=='assistant'||typeof data.message.content!=='string'||data.message.tool_calls?.length)throw new TrialError('invalid_output','Expected a single JSON action response');
+    validateChatResponse(data);
     let action;try{action=JSON.parse(data.message.content);}catch{throw new TrialError('invalid_output','Model content is not valid action JSON');}
     return {action,message:data.message,metrics:{promptTokens:data.prompt_eval_count,outputTokens:data.eval_count,doneReason:data.done_reason,totalDurationNs:data.total_duration,loadDurationNs:data.load_duration}};
   }};

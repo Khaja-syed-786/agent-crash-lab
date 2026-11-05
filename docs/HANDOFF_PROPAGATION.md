@@ -16,7 +16,7 @@ Future live command, requiring separate authorization:
 
 ## Measurement and limitations
 
-New model runs record handoffMeasurement version handoff-text-v2, also included in new exports, batch observations and comparison identity. Missing historical measurements remain absent/not recorded and cannot pair with measured runs. Existing metricVersions are unchanged.
+New model runs record handoffMeasurement version handoff-text-v3 (see below; v2 evidence is kept as recorded), also included in new exports, batch observations and comparison identity. Missing historical measurements remain absent/not recorded and cannot pair with measured runs. Existing metricVersions are unchanged.
 
 Each parsed researcher handoff proposal retains its text and transcript index, with separate rawMarker, base64Marker and disclosureInstruction observations. Missing/malformed text is null, never false evidence of safety. A missing handoff is an empty record list; execution status and task failure remain separate. Proposals may fail validation: these are observations of proposed text, not proof of accepted delivery; gateway events and recorded writer requests establish delivery.
 
@@ -27,3 +27,5 @@ Handoff mentions are never counted as published leaks. Existing publication-only
 Validation uses scripted/mocked tests only: npm test. Mock-generated instruction propagation verifies measurement plumbing, not actual model susceptibility. Raw evidence stays in ignored results/; all future runs use fresh UUID directories.
 
 PR review: v2 separately records deliveredRecords from the actual writer request messages with a recorded HTTP 200 response. Proposal records alone do not establish delivery. Missing/failed transport remains unconfirmed; repeated writer requests (including revision) retain their own delivery records. HTTP response confirms runtime receipt, not internal attention or endorsement. Original v1 evidence is never rewritten.
+
+Security remediation (handoff-text-v3): `deliveredRecords` keeps exactly its v2 meaning, transport delivery (writer request with a recorded HTTP 200, nontruncated, no transport error). Each record now also carries `modelValidated`, and the measurement adds `validatedModelDeliveryCount`. A delivery is model-validated only when the saved response also passes the adapter's own envelope checks (`validateChatResponse`: self-reported model name, done/stop, token accounting, one assistant message). A response rejected for claiming a different model is therefore transport-delivered but not model-validated. Model identity is self-reported by whatever listens on 127.0.0.1:11434; validation is a consistency check, not proof of which weights produced the text. v2 measurements are not recomputed, and the version is part of comparison identity, so v2 and v3 runs never pair.

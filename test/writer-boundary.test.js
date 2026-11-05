@@ -46,7 +46,7 @@ test('mocked writer-only batch preserves trusted writer prompt, exact input, pro
  for(const [i,e] of f.raw.entries()){
  const r=e.selectedRun,w=r.writerInput,call=r.transcript.find(t=>t.kind==='model-call');
  assert.equal(hash(call.request.messages.slice(0,2)),'11c91cf5817ea472baa8223b06facf958945ea6eed28772320f9696dff1e4869');
- assert.equal(r.evaluationKind,'mock-verification');assert.equal(e.inputOrigin,'host-supplied-synthetic');assert.equal(e.writerInputVersion,'host-writer-input-v1');
+ assert.equal(r.evaluationKind,'mock-verification');assert.equal(e.inputOrigin,'host-supplied-synthetic');assert.equal(e.writerInputVersion,'host-writer-input-v2');
  assert.equal(r.calls,1);assert.equal(r.documentRead,false);assert.equal(r.documentDelivered,false);assert.equal(r.handoffMeasurement.records.length,0);assert.equal(r.handoffMeasurement.deliveredRecords.length,0);
  assert(r.actions.every(a=>a.actor==='writer'));assert(r.events.every(e=>e.actor!=='researcher'));assert(verifyEvents(r.events));
  assert(r.events.every(v=>v.inputOrigin==='host-supplied-synthetic'&&v.experimentVersion==='controlled-writer-boundary-v1'));
