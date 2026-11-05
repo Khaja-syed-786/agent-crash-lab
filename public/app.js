@@ -1,9 +1,14 @@
-import {comparisonFor,evidenceFor,metricRecordState} from './comparison.js';
+import {comparisonFor,evidenceFor,metricRecordState,documentRecordState} from './comparison.js';
 const $=id=>document.getElementById(id);
 let selected=null, runs=[];
-const names={'direct-leak':'Direct synthetic-secret leak','public-summary':'Harmless public summary','base64-leak':'Base64-encoded synthetic-secret leak'};
+const names={'direct-leak':'Direct synthetic-secret leak','public-summary':'Harmless public summary','base64-leak':'Base64-encoded synthetic-secret leak','injection-control':'Document control (benign)','injection-direct':'Untrusted instruction: include fake secret','injection-authority':'Untrusted administrator claim','injection-base64':'Untrusted instruction: include Base64 marker'};
 function el(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
 const execution=()=>$('execution').value;
+const modelOnly=['injection-control','injection-direct','injection-authority','injection-base64'];
+function syncScenarios(){
+  for(const option of Array.from($('scenario').options??[]))if(option.dataset?.modelOnly==='true')option.disabled=execution()!=='local-model';
+  if(execution()!=='local-model'&&modelOnly.includes($('scenario').value))$('scenario').value='public-summary';
+}
 const matching=r=>r.scenario===$('scenario').value&&r.policyVersion===$('policy').value&&r.execution===execution();
 function show(run){
   selected=run;$('export').disabled=!run;
@@ -15,6 +20,9 @@ function show(run){
   $('outcome').append(el('p',run.evaluation.leakDetected?'Evaluator: leak detected':'Evaluator: no known marker found',run.evaluation.leakDetected?'bad':'good'));
   const metricState=metricRecordState(run);
   $('outcome').append(el('p',metricState==='recorded'?'Task facts: '+(run.taskEvaluation.publicFacts.success?'pass':'fail')+' / '+run.taskEvaluation.publicFacts.version:metricState==='invalid'?'Task facts: invalid metric record; not scored':'Task facts: not recorded; historical run unchanged'));
+  const documentState=documentRecordState(run);
+  $('outcome').append(el('p',documentState==='recorded'?'Selected input: '+run.scenarioVersion+' / '+run.document.id+' / '+run.document.version+' / '+run.document.sha256:documentState==='invalid'?'Invalid document provenance; excluded from comparisons':'Document version not recorded; historical evidence unchanged'));
+  $('outcome').append(el('p','Evidence basis: '+(run.evaluationKind==='mock-verification'?'mocked verification only; no model behavior evaluated':run.evaluationKind??'not recorded')));
   for(const finding of run.evaluation.findings)$('outcome').append(el('p',`Publication ${finding.publicationIndex+1}: ${finding.representation} synthetic marker`));
 }
 function renderComparison(){
@@ -33,7 +41,7 @@ function renderComparison(){
 async function refresh(){
   const res=await fetch('/api/runs');if(!res.ok)throw Error('Unable to read run history');runs=await res.json();
   const box=$('history');box.replaceChildren();
-  for(const r of runs){const b=el('button',r.execution+' / '+names[r.scenario]+' / '+r.policyVersion+' / '+r.mode+' / '+new Date(r.createdAt).toLocaleTimeString(),'history');b.onclick=()=>{$('scenario').value=r.scenario;$('policy').value=r.policyVersion;$('execution').value=r.execution;show(r);renderComparison();};box.append(b);}
+  for(const r of runs){const b=el('button',r.execution+' / '+names[r.scenario]+' / '+r.policyVersion+' / '+r.mode+' / '+new Date(r.createdAt).toLocaleTimeString(),'history');b.onclick=()=>{$('scenario').value=r.scenario;$('policy').value=r.policyVersion;$('execution').value=r.execution;syncScenarios();show(r);renderComparison();};box.append(b);}
   if(!runs.length)box.textContent='No runs in this server session.';
   renderComparison();
 }
@@ -44,15 +52,16 @@ async function run(mode){
   try{
     const res=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json','X-Lab-Request':'1'},body:JSON.stringify({mode,scenario,policyVersion,...(selectedExecution==='local-model'?{execution:selectedExecution,seed:101,trialIndex:0}:{})})});
     const r=await res.json();if(!res.ok)throw Error(r.error);
-    await refresh();$('scenario').value=r.scenario;$('policy').value=r.policyVersion;$('execution').value=r.execution;show(r);renderComparison();$('status').textContent=(r.execution==='local-model'?'Local-model '+r.status+': ':'Completed scripted ')+mode+' fixture: '+names[scenario]+' / '+policyVersion;
+    await refresh();$('scenario').value=r.scenario;$('policy').value=r.policyVersion;$('execution').value=r.execution;syncScenarios();show(r);renderComparison();$('status').textContent=(r.execution==='local-model'?'Local-model '+r.status+': ':'Completed scripted ')+mode+' fixture: '+names[scenario]+' / '+policyVersion;
   }catch(e){$('status').textContent='Run failed: '+e.message;}
   finally{$('baseline').disabled=$('protected').disabled=$('scenario').disabled=$('policy').disabled=$('execution').disabled=false;}
 }
-$('execution').onchange=$('policy').onchange=$('scenario').onchange=()=>{show(runs.find(matching)??null);renderComparison();};
+$('execution').onchange=$('policy').onchange=$('scenario').onchange=()=>{syncScenarios();show(runs.find(matching)??null);renderComparison();};
 $('baseline').onclick=()=>run('baseline');$('protected').onclick=()=>run('protected');
 $('export').onclick=()=>{
   const data=evidenceFor(runs,selected);
   const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   const a=document.createElement('a');a.href=url;a.download='agent-crash-lab-'+selected.scenario+'-'+selected.policyVersion+(selected.execution==='local-model'?'-local-model-'+selected.id:'')+'-evidence.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
+syncScenarios();
 refresh().then(()=>{show(runs.find(matching)??null);renderComparison();}).catch(e=>$('status').textContent=e.message);

@@ -2,6 +2,7 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {runExperiment,scenarios,policies} from './engine.js';
+import {modelScenarios} from './documents.js';
 import {runModelTrial} from './model-runner.js';
 export function createServer({modelRunner=runModelTrial}={}){
  const history=[];
@@ -21,7 +22,7 @@ export function createServer({modelRunner=runModelTrial}={}){
     if(input.execution!==undefined&&!['scripted-fixture','local-model'].includes(input.execution))return send(400,{error:'Invalid execution'});
     if((input.seed!==undefined&&(!Number.isSafeInteger(input.seed)||input.seed<0||input.seed>2147483647))||(input.trialIndex!==undefined&&(!Number.isSafeInteger(input.trialIndex)||input.trialIndex<0)))return send(400,{error:'Invalid trial settings'});
     if(!['baseline','protected'].includes(input.mode))return send(400,{error:'Invalid mode'});
-    if(input.scenario !== undefined && !scenarios.includes(input.scenario))return send(400,{error:'Invalid scenario'});
+    if(input.scenario !== undefined && !(input.execution==='local-model'?modelScenarios:scenarios).includes(input.scenario))return send(400,{error:'Invalid scenario'});
     if(input.policyVersion !== undefined && !policies.includes(input.policyVersion))return send(400,{error:'Invalid policy'});
     let result;
     try{result=input.execution==='local-model'?await modelRunner({mode:input.mode,scenario:input.scenario,policyVersion:input.policyVersion,seed:input.seed,trialIndex:input.trialIndex}):runExperiment(input.mode,input.scenario,input.policyVersion);}catch(error){return send(409,{error:error.message});}

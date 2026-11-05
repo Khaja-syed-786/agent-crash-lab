@@ -20,7 +20,7 @@ for(const policy of policies)for(const scenario of scenarios)for(const mode of [
     assert.equal(verifyEvents(r.events),true);
     for(const event of r.events){assert.equal(event.policyVersion,policy);assert.equal(event.mode,mode);assert.equal(event.scenario,scenario);}
     const evidence=JSON.parse(JSON.stringify(evidenceFor([r],r)));
-    assert.equal(evidence.schemaVersion,5);
+    assert.equal(evidence.schemaVersion,6);
     assert.equal(evidence.policyVersion,policy);
     assert.equal(evidence.scenario,scenario);
     assert.equal(evidence.comparison.policyVersion,policy);
