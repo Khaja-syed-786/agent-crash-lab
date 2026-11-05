@@ -1,4 +1,5 @@
 // Bounded, predeclared pilot. No inference occurs by importing or building a plan.
+import {HANDOFF_MEASUREMENT_VERSION} from './handoff-evaluator.js';
 import {performance} from 'node:perf_hooks';
 import {randomUUID} from 'node:crypto';
 import {documentFixture} from './documents.js';
@@ -11,13 +12,15 @@ import {pairingKey,evidenceFor} from './public/comparison.js';
 export const RUNNER_VERSION='controlled-pilot-v2';
 export const BATCH_LIMIT_MS=30*60*1000;
 const SEEDS=[101,102,103],SCENARIOS=['injection-control','injection-direct'];
-export function buildEvaluationPlan(){
+export function buildEvaluationPlan(experiment='original'){
+  if(!['original','handoff-propagation'].includes(experiment))throw Error('Unsupported experiment');
+  const selectedScenarios=experiment==='original'?SCENARIOS:['handoff-control','handoff-disclosure'];
   const trials=[];
-  for(const [trialIndex,seed] of SEEDS.entries())for(const scenario of SCENARIOS){
+  for(const [trialIndex,seed] of SEEDS.entries())for(const scenario of selectedScenarios){
     const fixture=documentFixture(scenario),modes=trialIndex%2?['protected','baseline']:['baseline','protected'];
     for(const mode of modes)trials.push({index:trials.length,slotId:`${scenario}:${mode}:${seed}`,pairId:`${scenario}:${seed}`,settings:{mode,scenario,policyVersion:'exact-marker-v1',seed,trialIndex},scenarioVersion:fixture.scenarioVersion,document:fixture.document,matchedControl:fixture.matchedControl});
   }
-  return {version:RUNNER_VERSION,planned:12,model:{name:MODEL,digest:MODEL_DIGEST},metricVersions:{...TASK_METRIC_VERSIONS,leakage:LEAK_EVALUATOR_VERSION},promptVersion:PROMPT_VERSION,generation:{...OPTIONS},seeds:[...SEEDS],scenarios:[...SCENARIOS],batchLimitMs:BATCH_LIMIT_MS,trialLimits:{...LIMITS},trials};
+  return {...(experiment==='handoff-propagation'?{experimentVersion:'handoff-propagation-v1',handoffMeasurementVersion:HANDOFF_MEASUREMENT_VERSION}:{}),version:RUNNER_VERSION,planned:12,model:{name:MODEL,digest:MODEL_DIGEST},metricVersions:{...TASK_METRIC_VERSIONS,leakage:LEAK_EVALUATOR_VERSION},promptVersion:PROMPT_VERSION,generation:{...OPTIONS},seeds:[...SEEDS],scenarios:[...selectedScenarios],batchLimitMs:BATCH_LIMIT_MS,trialLimits:{...LIMITS},trials};
 }
 export function trialObservations(run){
   const proposals=[];
@@ -26,7 +29,7 @@ export function trialObservations(run){
     let validAction=true;try{validateAction(record.proposed,'writer','publish',run.limits.actionBytes);}catch{validAction=false;}
     proposals.push({validAction,...evaluatePublications([record.proposed.text])});
   }
-  return {version:'pilot-observations-v1',metricVersions:run.metricVersions??null,
+  return {handoffMeasurement:run.handoffMeasurement??null,version:'pilot-observations-v1',metricVersions:run.metricVersions??null,
     publicationProposals:proposals.length,markerBearingProposals:proposals.filter(p=>p.leakDetected).length,proposalFindings:proposals,
     acceptedPublications:run.publications.length,publishedLeak:run.evaluation.leakDetected,publicationFindings:run.evaluation.findings,
     gatewayPublicationBlocks:run.blockedAttempts,verbatimTaskSuccess:run.taskEvaluation.verbatim.success,publicFactsTaskSuccess:run.taskEvaluation.publicFacts.success,
@@ -44,7 +47,7 @@ function summarizeTrials(trials){
 }
 export function summarizeEvaluation(batch){
   return {metricVersions:batch.plan?.metricVersions??null,...summarizeTrials(batch.trials),batchErrors:batch.error?1:0,
-    conditions:SCENARIOS.flatMap(scenario=>['baseline','protected'].map(mode=>({scenario,mode,...summarizeTrials(batch.trials.filter(t=>t.settings.scenario===scenario&&t.settings.mode===mode))})))};
+    conditions:(batch.plan?.scenarios??SCENARIOS).flatMap(scenario=>['baseline','protected'].map(mode=>({scenario,mode,...summarizeTrials(batch.trials.filter(t=>t.settings.scenario===scenario&&t.settings.mode===mode))})))};
 }
 
 let active=false;
@@ -52,13 +55,13 @@ export async function runEvaluationBatch(options={}){
   if(active)throw Error('An evaluation batch is already active');
   active=true;try{return await executeBatch(options);}finally{active=false;}
 }
-async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store,now=()=>performance.now(),batchLimitMs=BATCH_LIMIT_MS,shouldStop=()=>false}={}){
+async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store,now=()=>performance.now(),batchLimitMs=BATCH_LIMIT_MS,shouldStop=()=>false,experiment='original'}={}){
   const evaluationKind=adapterEvaluationKind(adapter);
   if(evaluationKind==='local-model-observation'&&allowLive!==true)throw Error('Live execution is disabled; explicit allowLive is required');
   if(!store||typeof store.initialize!=='function'||typeof store.checkpoint!=='function'||typeof store.saveTrial!=='function')throw Error('An explicit evidence store is required');
   if(!Number.isInteger(batchLimitMs)||batchLimitMs<1||batchLimitMs>BATCH_LIMIT_MS)throw Error('Batch limit can only be tightened');
   const effectiveLimits=boundedLimits(adapter.limits);
-  const plan=buildEvaluationPlan(),started=now(),id=randomUUID();
+  const plan=buildEvaluationPlan(experiment),started=now(),id=randomUUID();
   const batch={id,version:RUNNER_VERSION,evaluationKind,plan,effectiveLimits,startedAt:new Date().toISOString(),batchLimitMs,status:'running',stopReason:null,
     trials:plan.trials.map(t=>({...t,trialId:`${id}:${t.slotId}`,attempted:false,status:'not_run',observations:null,evidenceFile:null}))};
   await store.initialize(batch);
