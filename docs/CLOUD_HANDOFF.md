@@ -113,3 +113,8 @@ The next feature adds model-only versioned synthetic documents (benign control, 
 PR #3 review found and fixed unmatched encoded-marker availability, spoofable mock labels and premature delivery claims. Current v2 documents share identical public/raw/encoded availability and an explicit matched control; archived v1 bytes remain unchanged. Adapter identity determines evidence basis, and host reads are separate from confirmed follow-up delivery. Reviewed fixes ade8c0d passed both CI jobs and were merged normally as df5e5da.
 
 A separate `controlled-pilot-v1` runner is prepared for 12 planned slots (control/direct document, baseline/exact-marker protected, seeds 101/102/103). It has a plan-only default, a separate explicit live gate, bounded serial execution, durable ignored evidence and non-dropping status/condition summaries. See BOUNDED_EVALUATION.md. All validation here is mocked; no live pilot has run. Live execution requires Ollama and the pinned model in the environment running the CLI. Cloud localhost is not the laptop; no tunnel, exposure or provisioning is included. The earlier 36-trial plan remains deferred.
+
+
+## Bounded-runner pre-merge review
+
+Protocol controlled-pilot-v2 adds explicit stable slot IDs, batch-qualified trial IDs and predeclared metric versions. Review fixed failed-initialization store ownership, cross-batch checkpoint writes and mutable adapter limits. Batch and trial elapsed budgets are monotonic. Refusal/timeout/failure counts remain distinct from publication and blocking; no successful-protection rate is emitted. Use BOUNDED_EVALUATION.md for the exact plan-only/live commands and pinned runtime requirements. No live pilot has been executed.

@@ -1,4 +1,5 @@
 // Only this fixed local endpoint and this already-installed model are permitted.
+import {performance} from 'node:perf_hooks';
 import {loadInstalledModel} from './installed-model.js';
 const originalFetch=globalThis.fetch;
 const actualAdapters=new WeakMap();
@@ -31,12 +32,6 @@ export function createTranscript(limit){
     if(bytes+size>limit){truncated=true;throw new TrialError('limit_exceeded','Transcript limit reached',{captureTruncated:true});}
     records.push(JSON.parse(serialized));bytes+=size;
   }};
-  if(fetchImpl===originalFetch&&metadataLoader===loadInstalledModel){
-    actualAdapters.set(adapter,{preflight:adapter.preflight,chat:adapter.chat});
-    Object.defineProperties(adapter,{preflight:{writable:false,configurable:false},chat:{writable:false,configurable:false}});
-  }
-  Object.defineProperty(adapter,'evaluationKind',{enumerable:true,get:()=>adapterEvaluationKind(adapter)});
-  return adapter;
 }
 export function validateAction(action,actor,expected,maxBytes=LIMITS.actionBytes){
   if(!action||Array.isArray(action)||typeof action!=='object')throw new TrialError('invalid_output','Action must be an object');
@@ -49,14 +44,14 @@ export function validateAction(action,actor,expected,maxBytes=LIMITS.actionBytes
   return action;
 }
 export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides={},metadataLoader=loadInstalledModel}={}){
-  const limits=boundedLimits(overrides);
-  async function request(path,body,{deadline,ledger,actor='runtime',inference=false}){
+  const limits=Object.freeze(boundedLimits(overrides));
+  async function request(path,body,{deadline,remainingMs=()=>Infinity,ledger,actor='runtime',inference=false}){
     if(!['/api/version','/api/tags','/api/chat'].includes(path))throw Error('Unsupported local endpoint');
-    const startedAt=new Date().toISOString(),started=Date.now();
+    const startedAt=new Date().toISOString(),started=performance.now();
     const entry={kind:inference?'model-call':'metadata',actor,path,startedAt,request:body===undefined?null:structuredClone(body),rawResponse:'',captureTruncated:false};
     const bodyText=body===undefined?undefined:JSON.stringify(body);
     if(bodyText&&Buffer.byteLength(bodyText)>limits.requestBytes)throw new TrialError('limit_exceeded','Request limit reached');
-    const remaining=deadline-Date.now();if(remaining<=0)throw new TrialError('timeout','Trial deadline exceeded');
+    const remaining=Math.min(deadline-Date.now(),remainingMs());if(remaining<=0)throw new TrialError('timeout','Trial deadline exceeded');
     const controller=new AbortController();
     const untilAbort=new Promise((_,reject)=>controller.signal.addEventListener('abort',()=>reject(new TrialError('timeout','Request deadline exceeded',{cancellationUncertain:inference})),{once:true}));
     const timer=setTimeout(()=>controller.abort(),Math.min(remaining,inference?limits.callMs:limits.metadataMs));
@@ -74,7 +69,7 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
         chunks.push(value);size+=value.length;
         entry.rawResponse=Buffer.concat(chunks).toString('utf8');
       }
-      if(controller.signal.aborted||Date.now()>deadline)throw new TrialError('timeout','Request deadline exceeded',{cancellationUncertain:inference});
+      if(controller.signal.aborted||Date.now()>deadline||remainingMs()<=0)throw new TrialError('timeout','Request deadline exceeded',{cancellationUncertain:inference});
       if(!response.ok)throw new TrialError('runtime_failure',`Ollama HTTP ${response.status}`);
       let data;try{data=JSON.parse(entry.rawResponse);}catch{throw new TrialError(inference?'invalid_output':'runtime_failure','Malformed runtime JSON');}
       if(data?.error)throw new TrialError('runtime_failure',String(data.error).slice(0,512));
@@ -86,7 +81,7 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
       if(failure.status==='timeout')entry.captureTruncated=true;
       throw failure;
     }finally{
-      clearTimeout(timer);entry.durationMs=Date.now()-started;
+      clearTimeout(timer);entry.durationMs=performance.now()-started;
       // Every transport response is retained before any proposed action can execute.
       try{ledger.append(entry);}catch(error){if(failure?.cancellationUncertain)error.cancellationUncertain=true;throw error;}
       if(controller.signal.aborted&&reader)void reader.cancel().catch(()=>{});
@@ -100,7 +95,7 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
     if(model.remote_host||model.remote_model||model.details?.format!=='gguf'||!model.capabilities?.includes('completion'))throw new TrialError('runtime_failure','Cloud or unsupported model rejected');
     let timer,metadata;
     try{
-      metadata=await Promise.race([metadataLoader({expectedDigest:MODEL_DIGEST,maxBytes:limits.responseBytes}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new TrialError('timeout','Local metadata deadline exceeded')),Math.max(1,Math.min(limits.metadataMs,context.deadline-Date.now())));})]);
+      metadata=await Promise.race([metadataLoader({expectedDigest:MODEL_DIGEST,maxBytes:limits.responseBytes}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new TrialError('timeout','Local metadata deadline exceeded')),Math.max(1,Math.min(limits.metadataMs,context.deadline-Date.now(),context.remainingMs?.()??Infinity)));})]);
       context.ledger.append({kind:'local-metadata',verification:metadata});
     }catch(error){throw error instanceof TrialError?error:new TrialError('runtime_failure',error.message);}finally{clearTimeout(timer);}
     return {name:MODEL,digest:model.digest,endpoint:ENDPOINT,runtimeVersion:version.version,details:model.details,capabilities:model.capabilities,...metadata};
@@ -119,6 +114,7 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
     actualAdapters.set(adapter,{preflight:adapter.preflight,chat:adapter.chat});
     Object.defineProperties(adapter,{preflight:{writable:false,configurable:false},chat:{writable:false,configurable:false}});
   }
+  Object.defineProperty(adapter,'limits',{writable:false,configurable:false});
   Object.defineProperty(adapter,'evaluationKind',{enumerable:true,get:()=>adapterEvaluationKind(adapter)});
   return adapter;
 }
