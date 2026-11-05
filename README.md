@@ -4,13 +4,13 @@ A local two-role data-leak regression lab. **Scripted mode** is deterministic an
 
 ## Initial findings and evidence types
 
-[Initial research findings](docs/INITIAL_FINDINGS.md) report three completed 12-slot batches separately: document disclosure, handoff propagation, and a controlled writer-only boundary experiment with host-supplied synthetic handoffs. No baseline leaks occurred and **gateway benefit was not demonstrated**. These small synthetic experiments do not establish general agent safety.
+[Initial research findings](docs/INITIAL_FINDINGS.md) report three completed 12-slot batches separately: document disclosure, handoff propagation, and a controlled writer-only boundary experiment with host-supplied synthetic handoffs. No baseline leaks occurred and **gateway benefit was not demonstrated**. The three planned live batches completed 36 trials with no observed disclosure proposals, published leaks, or gateway blocks. They remain separately reported experiments, not a pooled safety score. These small synthetic experiments do not establish general agent safety or production readiness.
 
 **Scripted** runs use predetermined candidates/fallbacks. **Mocked** tests supply artificial model responses to verify plumbing. **Actual-model** observations come from explicit local Ollama runs and retain real requests/responses privately. These evidence types are not interchangeable; automated test success is not a live-model protection result.
 
 ## Quick scripted demo (no model)
 
-Node.js 22 or newer is required; there are no npm dependencies to install. This command runs baseline/protected synthetic raw-leak fixtures and prints separate block/leak/task outcomes:
+Node.js 22 and 24 are the supported, CI-tested versions; there are no npm dependencies to install. This command runs baseline/protected synthetic raw-leak fixtures and prints separate block/leak/task outcomes:
 
 ```powershell
 node --input-type=module -e "import {runExperiment} from './engine.js'; for (const mode of ['baseline','protected']) { const r=runExperiment(mode); console.log({evidence:r.evaluationKind,mode,blocks:r.blockedAttempts,publishedLeak:r.evaluation.leakDetected,task:r.taskCompleted}); }"
@@ -20,7 +20,7 @@ Expected scripted output: baseline publishes the fake marker with zero blocks; p
 
 ## Run
 
-Install Node.js 22 or newer. No npm dependencies or install step required.
+Use Node.js 22 or 24. No npm dependencies or install step required.
 
 ```
 npm test
@@ -125,4 +125,10 @@ This tests cooperative scripted or explicitly selected local-model actions throu
 3. Isolated worker processes with enforced filesystem and network restrictions.
 4. Extended scenario library, delegated capability checks, exportable regression suites.
 
-No paid service, deployment or revenue claims are implied. Keep this experiment in its separate private repository.
+No paid service, deployment or revenue claims are implied. Keep this experiment separate from unrelated projects.
+
+## License and releases
+
+MIT licensed; see [LICENSE](LICENSE). Copyright (c) 2026 Khaja Syed.
+
+[Release process](docs/RELEASING.md) describes validated version tags, tests and generated release notes. Release automation is prepared but has not yet been exercised; no tag or GitHub Release was created during preparation. Raw evidence, credentials and models are excluded from Git and release assets.
