@@ -91,7 +91,7 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
         batch.initialContext??=context;
       }
       const key=pairingKey(run),previous=pairs.get(trial.pairId);
-      trial.comparisonValid=key!==null&&(!previous||previous===key);
+      trial.comparisonValid=run.model.verified===true&&key!==null&&(!previous||previous===key);
       // Raw evidence was saved before validating the declared plan context.
       if(!trial.comparisonValid)batch.stopReason='comparison_identity_changed';
       else pairs.set(trial.pairId,key);

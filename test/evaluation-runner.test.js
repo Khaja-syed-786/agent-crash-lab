@@ -91,3 +91,7 @@ test('a slow checkpoint cannot consume the batch window and then start an over-b
   let time=0;const store=memoryStore(),original=store.checkpoint,f=mockAdapter();store.checkpoint=async b=>{if(b.trials.some(t=>t.status==='running'))time=240001;return original(b);};
   const b=await runEvaluationBatch({adapter:f.adapter,store,now:()=>time,batchLimitMs:240001});assert.equal(b.summary.attempted,0);assert.equal(b.summary.statusCounts.not_run_budget,12);assert.equal(f.requests.length,0);
 });
+
+test('failed paired preflight cannot claim a verified comparable model identity',async()=>{
+  const b=await runEvaluationBatch({adapter:mockAdapter(['safe','offline']).adapter,store:memoryStore()});assert.equal(b.summary.attempted,2);assert.equal(b.summary.executionErrors,1);assert.equal(b.pairs[0].bothAttempted,true);assert.equal(b.pairs[0].outcomesRecorded,2);assert.equal(b.pairs[0].comparable,false);assert.equal(b.trials[1].comparisonValid,false);
+});
