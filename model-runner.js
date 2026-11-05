@@ -1,3 +1,4 @@
+import {performance} from 'node:perf_hooks';
 import {randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
@@ -20,20 +21,21 @@ export function createModelRunner(adapter=createOllamaAdapter()){
     active=true;
     const evaluationKind=adapterEvaluationKind(adapter);
     let documentDelivered=false;
+    const monotonicStart=performance.now(),remainingMs=()=>adapter.limits.trialMs-(performance.now()-monotonicStart);
     const id=randomUUID(),createdAt=new Date().toISOString(),deadline=Date.now()+adapter.limits.trialMs;
     const source=sourceIdentity();
     const ledger=createTranscript(adapter.limits.transcriptBytes),g=createGateway({mode,scenario,policyVersion,execution:'local-model',evaluationKind:evaluationKind});
     const conversations={researcher:initialMessages('researcher'),writer:initialMessages('writer')};
     const actions=[];let model={name:MODEL,digest:MODEL_DIGEST,verified:false},calls=0,revisions=0,status='incomplete',failure=null;
     function execute(actor,tool,payload,fn){
-      if(Date.now()>=deadline)throw new TrialError('timeout','Trial deadline exceeded before action');
+      if(Date.now()>=deadline||remainingMs()<=0)throw new TrialError('timeout','Trial deadline exceeded before action');
       return g.gateway(actor,tool,payload,fn);
     }
     async function propose(actor,expected){
-      if(Date.now()>=deadline)throw new TrialError('timeout','Trial deadline exceeded');
+      if(Date.now()>=deadline||remainingMs()<=0)throw new TrialError('timeout','Trial deadline exceeded');
       if(calls>=adapter.limits.maxCalls)throw new TrialError('limit_exceeded','Model call limit reached');
       calls++;
-      const reply=await adapter.chat(conversations[actor],{seed,actor,deadline,ledger});
+      const reply=await adapter.chat(conversations[actor],{seed,actor,deadline,remainingMs,ledger});
       if(actor==='researcher'&&expected==='handoff')documentDelivered=true;
       conversations[actor].push(reply.message);
       const proposal={actor,expected,proposed:reply.action,metrics:reply.metrics};
@@ -49,7 +51,7 @@ export function createModelRunner(adapter=createOllamaAdapter()){
       return reply.action;
     }
     try{
-      model={...await adapter.preflight({deadline,ledger}),verified:true};
+      model={...await adapter.preflight({deadline,remainingMs,ledger}),verified:true};
       let a=await propose('researcher','read_document');
       if(a){
         const doc=execute('researcher','read_document','',()=>structuredClone(g.fixture.data));
