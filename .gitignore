@@ -19,3 +19,14 @@ _netrc
 
 # Exported experiment evidence
 *evidence*.json
+
+# Local model runtimes, weights and metadata
+.ollama/
+models/
+*.gguf
+*.safetensors
+*.onnx
+*.pt
+*.pth
+*.bin
+*.ckpt
