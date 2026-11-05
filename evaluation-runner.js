@@ -85,6 +85,7 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
       trial.status=run.status;trial.observations=trialObservations(run);trial.runId=run.id;
       runs.unshift(run);
       trial.evidenceFile=await store.saveTrial(trial,{...evidenceFor(runs,run),batchId:id,slotId:trial.slotId,trialId:trial.trialId});
+      if(plan.handoffMeasurementVersion&&run.handoffMeasurement?.version!==plan.handoffMeasurementVersion)throw Error('Handoff measurement version changed from plan');
       if(run.evaluationKind!==evaluationKind)throw Error('Evidence basis changed');
       if(run.scenarioVersion!==trial.scenarioVersion||hash(run.document)!==hash(trial.document)||hash(run.matchedControl)!==hash(trial.matchedControl))throw Error('Planned document identity changed');
       if(run.model.verified&&(run.model.digest!==plan.model.digest||run.model.name!==plan.model.name))throw Error('Model identity changed');
