@@ -2,7 +2,8 @@
 import {buildEvaluationPlan,runEvaluationBatch} from '../evaluation-runner.js';
 import {createEvaluationStore} from '../evaluation-store.js';
 const args=process.argv.slice(2);
-const experiment=args.at(-1)==='--handoff-propagation'?(args.pop(),'handoff-propagation'):'original';
+const selection={'--handoff-propagation':'handoff-propagation','--writer-boundary':'writer-boundary'};
+const experiment=selection[args.at(-1)]?(selection[args.pop()]):'original';
 if(args.length===0||args.length===1&&args[0]==='--plan')console.log(JSON.stringify(buildEvaluationPlan(experiment),null,2));
 else if(args.length===1&&args[0]==='--execute-live'){
   let stopped=false;process.on('SIGINT',()=>{stopped=true;});

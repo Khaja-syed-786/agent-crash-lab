@@ -1,4 +1,5 @@
 // Bounded, predeclared pilot. No inference occurs by importing or building a plan.
+import {WRITER_INPUT_VERSION} from './writer-input-evaluator.js';
 import {HANDOFF_MEASUREMENT_VERSION} from './handoff-evaluator.js';
 import {performance} from 'node:perf_hooks';
 import {randomUUID} from 'node:crypto';
@@ -13,14 +14,14 @@ export const RUNNER_VERSION='controlled-pilot-v2';
 export const BATCH_LIMIT_MS=30*60*1000;
 const SEEDS=[101,102,103],SCENARIOS=['injection-control','injection-direct'];
 export function buildEvaluationPlan(experiment='original'){
-  if(!['original','handoff-propagation'].includes(experiment))throw Error('Unsupported experiment');
-  const selectedScenarios=experiment==='original'?SCENARIOS:['handoff-control','handoff-disclosure'];
+  if(!['original','handoff-propagation','writer-boundary'].includes(experiment))throw Error('Unsupported experiment');
+  const selectedScenarios=experiment==='original'?SCENARIOS:experiment==='writer-boundary'?['writer-control','writer-disclosure']:['handoff-control','handoff-disclosure'];
   const trials=[];
   for(const [trialIndex,seed] of SEEDS.entries())for(const scenario of selectedScenarios){
     const fixture=documentFixture(scenario),modes=trialIndex%2?['protected','baseline']:['baseline','protected'];
     for(const mode of modes)trials.push({index:trials.length,slotId:`${scenario}:${mode}:${seed}`,pairId:`${scenario}:${seed}`,settings:{mode,scenario,policyVersion:'exact-marker-v1',seed,trialIndex},scenarioVersion:fixture.scenarioVersion,document:fixture.document,matchedControl:fixture.matchedControl});
   }
-  return {...(experiment==='handoff-propagation'?{experimentVersion:'handoff-propagation-v1',handoffMeasurementVersion:HANDOFF_MEASUREMENT_VERSION}:{}),version:RUNNER_VERSION,planned:12,model:{name:MODEL,digest:MODEL_DIGEST},metricVersions:{...TASK_METRIC_VERSIONS,leakage:LEAK_EVALUATOR_VERSION},promptVersion:PROMPT_VERSION,generation:{...OPTIONS},seeds:[...SEEDS],scenarios:[...selectedScenarios],batchLimitMs:BATCH_LIMIT_MS,trialLimits:{...LIMITS},trials};
+  return {...(experiment==='writer-boundary'?{experimentVersion:'controlled-writer-boundary-v1',inputOrigin:'host-supplied-synthetic',writerInputVersion:WRITER_INPUT_VERSION}:{}),...(experiment==='handoff-propagation'?{experimentVersion:'handoff-propagation-v1',handoffMeasurementVersion:HANDOFF_MEASUREMENT_VERSION}:{}),version:RUNNER_VERSION,planned:12,model:{name:MODEL,digest:MODEL_DIGEST},metricVersions:{...TASK_METRIC_VERSIONS,leakage:LEAK_EVALUATOR_VERSION},promptVersion:PROMPT_VERSION,generation:{...OPTIONS},seeds:[...SEEDS],scenarios:[...selectedScenarios],batchLimitMs:BATCH_LIMIT_MS,trialLimits:{...LIMITS},trials};
 }
 export function trialObservations(run){
   const proposals=[];
@@ -29,7 +30,7 @@ export function trialObservations(run){
     let validAction=true;try{validateAction(record.proposed,'writer','publish',run.limits.actionBytes);}catch{validAction=false;}
     proposals.push({validAction,...evaluatePublications([record.proposed.text])});
   }
-  return {handoffMeasurement:run.handoffMeasurement??null,version:'pilot-observations-v1',metricVersions:run.metricVersions??null,
+  return {writerInput:run.writerInput??null,handoffMeasurement:run.handoffMeasurement??null,version:'pilot-observations-v1',metricVersions:run.metricVersions??null,
     publicationProposals:proposals.length,markerBearingProposals:proposals.filter(p=>p.leakDetected).length,proposalFindings:proposals,
     acceptedPublications:run.publications.length,publishedLeak:run.evaluation.leakDetected,publicationFindings:run.evaluation.findings,
     gatewayPublicationBlocks:run.blockedAttempts,verbatimTaskSuccess:run.taskEvaluation.verbatim.success,publicFactsTaskSuccess:run.taskEvaluation.publicFacts.success,
@@ -63,9 +64,9 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
   const effectiveLimits=boundedLimits(adapter.limits);
   const plan=buildEvaluationPlan(experiment),started=now(),id=randomUUID();
   const batch={id,version:RUNNER_VERSION,evaluationKind,plan,effectiveLimits,startedAt:new Date().toISOString(),batchLimitMs,status:'running',stopReason:null,
-    trials:plan.trials.map(t=>({...t,trialId:`${id}:${t.slotId}`,attempted:false,status:'not_run',observations:null,evidenceFile:null}))};
+    trials:plan.trials.map(t=>({...t,...(experiment==='writer-boundary'?{experimentVersion:plan.experimentVersion,inputOrigin:plan.inputOrigin}:{}),trialId:`${id}:${t.slotId}`,attempted:false,status:'not_run',observations:null,evidenceFile:null}))};
   await store.initialize(batch);
-  const runTrial=createModelRunner(adapter),runs=[],pairs=new Map();
+  const runTrial=createModelRunner(adapter,{writerBoundary:experiment==='writer-boundary'}),runs=[],pairs=new Map();
   const checkpoint=async()=>{batch.summary=summarizeEvaluation(batch);await store.checkpoint(batch);};
   try{
     for(const trial of batch.trials){
@@ -85,6 +86,7 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
       trial.status=run.status;trial.observations=trialObservations(run);trial.runId=run.id;
       runs.unshift(run);
       trial.evidenceFile=await store.saveTrial(trial,{...evidenceFor(runs,run),batchId:id,slotId:trial.slotId,trialId:trial.trialId});
+      if(plan.writerInputVersion&&(run.writerInput?.version!==plan.writerInputVersion||run.inputOrigin!==plan.inputOrigin||run.experimentVersion!==plan.experimentVersion||run.writerInput.sha256!==trial.document.sha256||run.writerInput.confirmedDeliveries.some(d=>!d.matchesSupplied)))throw Error('Writer input identity changed');
       if(plan.handoffMeasurementVersion&&run.handoffMeasurement?.version!==plan.handoffMeasurementVersion)throw Error('Handoff measurement version changed from plan');
       if(run.evaluationKind!==evaluationKind)throw Error('Evidence basis changed');
       if(run.scenarioVersion!==trial.scenarioVersion||hash(run.document)!==hash(trial.document)||hash(run.matchedControl)!==hash(trial.matchedControl))throw Error('Planned document identity changed');
@@ -111,7 +113,7 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
     // Return the attempted/unknown counts; never pretend missing raw evidence was saved.
   }
   for(const trial of batch.trials)if(!trial.attempted)trial.status=batch.stopReason==='batch_budget'?'not_run_budget':batch.stopReason?'not_run_stopped':'not_run';
-  batch.pairs=[...new Set(plan.trials.map(t=>t.pairId))].map(pairId=>{const pair=batch.trials.filter(t=>t.pairId===pairId);return {pairId,trialIndices:pair.map(t=>t.index),bothAttempted:pair.every(t=>t.attempted),outcomesRecorded:pair.filter(t=>t.observations).length,comparable:pair.every(t=>t.observations&&t.comparisonValid),bothDocumentsDelivered:pair.every(t=>t.observations?.documentDelivered)};});
+  batch.pairs=[...new Set(plan.trials.map(t=>t.pairId))].map(pairId=>{const pair=batch.trials.filter(t=>t.pairId===pairId);return {pairId,trialIndices:pair.map(t=>t.index),bothAttempted:pair.every(t=>t.attempted),outcomesRecorded:pair.filter(t=>t.observations).length,comparable:pair.every(t=>t.observations&&t.comparisonValid),bothDocumentsDelivered:pair.every(t=>t.observations?.documentDelivered),...(experiment==='writer-boundary'?{bothWriterInputsConfirmed:pair.every(t=>t.observations?.writerInput?.confirmedDeliveries.length>0)}:{})};});
   batch.status=batch.stopReason?'stopped':'completed';batch.finishedAt=new Date().toISOString();
   await checkpoint();return batch;
 }

@@ -29,7 +29,7 @@ const documentHashes={
   'injection-base64':'5e41905bca2c081a4cb71d621f8be2dcb62e1ed751e73778db5736a391c1f2f0'
 };
 test('versioned document bytes are pinned and document copies cannot mutate the catalogue',()=>{
-  assert.equal(injectionScenarios.length,4);assert.equal(modelScenarios.length,9);
+  assert.equal(injectionScenarios.length,4);assert.equal(modelScenarios.length,11);
   for(const scenario of injectionScenarios){
     const fixture=documentFixture(scenario);
     assert.equal(fixture.scenarioVersion,scenario+'-model-v2');assert.equal(fixture.document.version,'maintenance-document-v2');
