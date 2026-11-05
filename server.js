@@ -36,4 +36,4 @@ export function createServer({modelRunner=runModelTrial}={}){
   try{return send(200,await readFile(new URL('./public/'+asset[0],import.meta.url)),asset[1]);}catch{return send(500,{error:'Asset unavailable'});}
  });
 }
-if(process.argv[1]===fileURLToPath(import.meta.url)){const port=Number(process.env.PORT||5080);createServer().listen(port,'127.0.0.1',()=>console.log(`Agent Crash Lab: http://127.0.0.1:${port} — scripted fixtures / opt-in local Ollama`));}
+if(process.argv[1]===fileURLToPath(import.meta.url)){const port=Number(process.env.PORT||5080);createServer().listen(port,'127.0.0.1',()=>console.log(`OrbitFault: http://127.0.0.1:${port} — scripted fixtures / opt-in local Ollama`));}

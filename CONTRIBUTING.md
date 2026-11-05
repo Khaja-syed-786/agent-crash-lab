@@ -1,4 +1,6 @@
-# Contributing to Agent Crash Lab
+# Contributing to OrbitFault
+
+The repository is [Khaja-syed-786/orbitfault](https://github.com/Khaja-syed-786/orbitfault). Formerly Agent Crash Lab; preserve original experiment/evidence names when reviewing historical records.
 
 Welcome. Start with the [README setup and scripted demo](README.md#get-the-code), [architecture](README.md#architecture) and [initial findings](docs/INITIAL_FINDINGS.md). This is an experimental local lab, not production agent containment. Report vulnerabilities through [SECURITY.md](SECURITY.md), not a detailed public exploit issue.
 

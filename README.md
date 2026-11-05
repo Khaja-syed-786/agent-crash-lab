@@ -1,4 +1,10 @@
-# Agent Crash Lab - initial research snapshot
+# OrbitFault
+
+**Test AI agent boundaries. Trace what happened.**
+
+An experimental test harness for AI agent failures, policy enforcement, and execution evidence.
+
+Formerly Agent Crash Lab. Historical findings and original experiment records retain their original names. Legacy evidence export filenames keep the agent-crash-lab prefix for compatibility; scenario IDs and evidence formats are unchanged.
 
 A local two-role data-leak regression lab. **Scripted mode** is deterministic and invokes no model. **Local-model mode** explicitly opts into an already-installed llama3.2:latest through loopback Ollama. No paid API, model downloads, or external publisher is used. Independent from OpenOrbia and SOC Range.
 
@@ -13,8 +19,8 @@ A local two-role data-leak regression lab. **Scripted mode** is deterministic an
 Install Git and a current Node.js 22 or 24 release (including npm). Then, from a terminal:
 
 ```powershell
-git clone https://github.com/Khaja-syed-786/agent-crash-lab.git
-cd agent-crash-lab
+git clone https://github.com/Khaja-syed-786/orbitfault.git
+cd orbitfault
 ```
 
 Run the commands below from this directory, where package.json is located. There is no npm dependency install step: do not run npm ci (there is no lockfile). Ollama, model files, API keys, Docker and a browser are not needed for tests or the terminal demo. If PowerShell blocks npm.ps1, use `npm.cmd test` / `npm.cmd start` without changing your execution policy.
