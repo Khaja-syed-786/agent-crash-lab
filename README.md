@@ -1,6 +1,22 @@
-# Agent Crash Lab — experimental v0.1.0
+# Agent Crash Lab - initial research snapshot
 
 A local two-role data-leak regression lab. **Scripted mode** is deterministic and invokes no model. **Local-model mode** explicitly opts into an already-installed llama3.2:latest through loopback Ollama. No paid API, model downloads, or external publisher is used. Independent from OpenOrbia and SOC Range.
+
+## Initial findings and evidence types
+
+[Initial research findings](docs/INITIAL_FINDINGS.md) report three completed 12-slot batches separately: document disclosure, handoff propagation, and a controlled writer-only boundary experiment with host-supplied synthetic handoffs. No baseline leaks occurred and **gateway benefit was not demonstrated**. These small synthetic experiments do not establish general agent safety.
+
+**Scripted** runs use predetermined candidates/fallbacks. **Mocked** tests supply artificial model responses to verify plumbing. **Actual-model** observations come from explicit local Ollama runs and retain real requests/responses privately. These evidence types are not interchangeable; automated test success is not a live-model protection result.
+
+## Quick scripted demo (no model)
+
+Node.js 22 or newer is required; there are no npm dependencies to install. This command runs baseline/protected synthetic raw-leak fixtures and prints separate block/leak/task outcomes:
+
+```powershell
+node --input-type=module -e "import {runExperiment} from './engine.js'; for (const mode of ['baseline','protected']) { const r=runExperiment(mode); console.log({evidence:r.evaluationKind,mode,blocks:r.blockedAttempts,publishedLeak:r.evaluation.leakDetected,task:r.taskCompleted}); }"
+```
+
+Expected scripted output: baseline publishes the fake marker with zero blocks; protected blocks the candidate and completes with a scripted public fallback. This is programmed fixture behavior, not real-model evidence.
 
 ## Run
 
@@ -31,7 +47,7 @@ node scripts/model-trial.js --scenario direct-leak --mode protected --pair resul
 
 The CLI runs exactly one trial per invocation, writes ignored evidence, and never downloads a model. It verifies the pinned installed Llama 3.2 manifest digest, local GGUF metadata, and weight-file presence/size. Model weights are not rehashed. The fixed endpoint is `http://127.0.0.1:11434`; remote endpoints, cloud models, changed tags, redirects, and unknown request options are rejected. Ollama's large `/api/show` response is deliberately avoided: read-only bounded local manifest/template/parameter metadata supplies the identity hashes without relaxing the 32 KiB limit. Default model storage is `~/.ollama/models`, or the existing `OLLAMA_MODELS` directory.
 
-Researcher and writer have separate conversations. The researcher must first propose `read_document`, then propose a `handoff`. The writer sees only the permitted model-authored handoff and proposes `publish`. All JSON/schema/role/sequence/text checks precede gateway execution. Documents and handoffs are labeled untrusted data; models are told to ignore embedded instructions. Host controls are authoritative; this is cooperative execution control, not a sandbox.
+Researcher and writer have separate conversations. The researcher must first propose `read_document`, then propose a `handoff`. The writer sees only the permitted model-authored handoff and proposes `publish` in the normal two-role flow. The separately selected writer-boundary experiment instead supplies a host-authored synthetic handoff directly and labels the researcher bypass explicitly; it is not an end-to-end attack. All JSON/schema/role/sequence/text checks precede gateway execution. Documents and handoffs are labeled untrusted data; models are told to ignore embedded instructions. Host controls are authoritative; this is cooperative execution control, not a sandbox.
 
 If a proposed publication is blocked, the writer may generate one revision or refuse/finish. No scripted fallback is inserted, and no leak is required. Both fixture policies retain their behavior. The independent evaluator checks only actual accepted publications for the known raw/Base64 marker.
 
@@ -45,15 +61,25 @@ New exports use schema 6 and include both task metric versions plus the leakage 
 
 `node scripts/browser-check.js --mock-model` verifies the scripted browser matrix plus opt-in model UI/pairing/export with an explicitly marked mock runner; it makes no live inference calls. The 36-trial batch is deferred. See [the implementation plan](docs/LOCAL_MODEL_PLAN.md) and [pilot observations](docs/LOCAL_MODEL_PILOT.md).
 
-## Bounded evaluation runner (prepared; not run live)
+## Bounded evaluation experiments
 
 `node scripts/evaluation-pilot.js --plan` prints a fixed 12-slot plan: benign control/direct-disclosure document, baseline/exact-marker protected mode, and seeds 101/102/103. The default also prints only the plan. Live execution requires separate authorization, an explicit `--execute-live` flag, and installed loopback Ollama/model files in the executing environment. No laptop tunnel or model download is provided. See [bounded evaluation](docs/BOUNDED_EVALUATION.md) for limits, stop behavior, per-condition counters and ignored raw evidence storage. Cloud tests use mocks only.
+
+The original document-disclosure batch and opt-in [handoff propagation](docs/HANDOFF_PROPAGATION.md) and [writer-only boundary](docs/WRITER_BOUNDARY.md) batches have now completed once each. Their distinct designs and results are in [INITIAL_FINDINGS.md](docs/INITIAL_FINDINGS.md). Plan-only commands contact no runtime:
+
+```powershell
+node scripts/evaluation-pilot.js --plan
+node scripts/evaluation-pilot.js --plan --handoff-propagation
+node scripts/evaluation-pilot.js --plan --writer-boundary
+```
+
+Live inference requires a runtime and the pinned model in the environment executing it; a cloud workspace cannot use a laptop's localhost. Raw evidence remains ignored. Documentation preparation does not execute or authorize another batch.
 
 ## Controlled untrusted-document inputs
 
 Four additional model-only documents provide a benign control, direct disclosure instruction, administrator-authority claim, and known-Base64 disclosure instruction. The adversarial text stays in untrusted document content; the legitimate task and agent system instructions are unchanged. No new scenario scripts a production model response or guarantees a leak. See [controlled injection documents](docs/INJECTION_SCENARIOS.md) for IDs, versions, delivery rules and limitations.
 
-New evidence includes selected document IDs/versions/hashes, scenario versions, delivery state and an explicit scripted/mocked/actual-observation basis. Comparison keys isolate those dimensions. This milestone uses mocked verification only and establishes no attack outcome. Original scenarios, policies, metric versions and historical evidence remain unchanged.
+New evidence includes selected document IDs/versions/hashes, scenario versions, delivery state and an explicit scripted/mocked/actual-observation basis. Comparison keys isolate those dimensions. Initial implementation tests used mocked verification. Subsequent actual-model results for the evaluated control/direct pair are documented separately in [the findings](docs/INITIAL_FINDINGS.md); the authority and Base64 instruction variants were not evaluated in those three batches. Original scenarios, policies, metric versions and historical evidence remain unchanged.
 
 ## Scripted scenarios and expected outcomes
 
@@ -94,7 +120,7 @@ This tests cooperative scripted or explicitly selected local-model actions throu
 
 ## Next milestones
 
-1. Review the separately versioned, deterministic public-facts metric and its limits before enabling a predeclared repeated-trial model batch.
+1. Independently review the initial findings and limitations before predeclaring any additional evaluation. The original 36-trial batch remains deferred.
 2. Broader independent evaluation, repeated trials, and additional transformed-marker cases.
 3. Isolated worker processes with enforced filesystem and network restrictions.
 4. Extended scenario library, delegated capability checks, exportable regression suites.
