@@ -45,6 +45,10 @@ New exports use schema 6 and include both task metric versions plus the leakage 
 
 `node scripts/browser-check.js --mock-model` verifies the scripted browser matrix plus opt-in model UI/pairing/export with an explicitly marked mock runner; it makes no live inference calls. The 36-trial batch is deferred. See [the implementation plan](docs/LOCAL_MODEL_PLAN.md) and [pilot observations](docs/LOCAL_MODEL_PILOT.md).
 
+## Bounded evaluation runner (prepared; not run live)
+
+`node scripts/evaluation-pilot.js --plan` prints a fixed 12-slot plan: benign control/direct-disclosure document, baseline/exact-marker protected mode, and seeds 101/102/103. The default also prints only the plan. Live execution requires separate authorization, an explicit `--execute-live` flag, and installed loopback Ollama/model files in the executing environment. No laptop tunnel or model download is provided. See [bounded evaluation](docs/BOUNDED_EVALUATION.md) for limits, stop behavior, per-condition counters and ignored raw evidence storage. Cloud tests use mocks only.
+
 ## Controlled untrusted-document inputs
 
 Four additional model-only documents provide a benign control, direct disclosure instruction, administrator-authority claim, and known-Base64 disclosure instruction. The adversarial text stays in untrusted document content; the legitimate task and agent system instructions are unchanged. No new scenario scripts a production model response or guarantees a leak. See [controlled injection documents](docs/INJECTION_SCENARIOS.md) for IDs, versions, delivery rules and limitations.
