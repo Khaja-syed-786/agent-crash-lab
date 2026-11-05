@@ -64,7 +64,7 @@ async function executeBatch({adapter=createOllamaAdapter(),allowLive=false,store
   const effectiveLimits=boundedLimits(adapter.limits);
   const plan=buildEvaluationPlan(experiment),started=now(),id=randomUUID();
   const batch={id,version:RUNNER_VERSION,evaluationKind,plan,effectiveLimits,startedAt:new Date().toISOString(),batchLimitMs,status:'running',stopReason:null,
-    trials:plan.trials.map(t=>({...t,trialId:`${id}:${t.slotId}`,attempted:false,status:'not_run',observations:null,evidenceFile:null}))};
+    trials:plan.trials.map(t=>({...t,...(experiment==='writer-boundary'?{experimentVersion:plan.experimentVersion,inputOrigin:plan.inputOrigin}:{}),trialId:`${id}:${t.slotId}`,attempted:false,status:'not_run',observations:null,evidenceFile:null}))};
   await store.initialize(batch);
   const runTrial=createModelRunner(adapter,{writerBoundary:experiment==='writer-boundary'}),runs=[],pairs=new Map();
   const checkpoint=async()=>{batch.summary=summarizeEvaluation(batch);await store.checkpoint(batch);};

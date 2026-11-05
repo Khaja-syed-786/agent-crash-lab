@@ -28,7 +28,7 @@ export function createModelRunner(adapter=createOllamaAdapter(),{writerBoundary=
     const monotonicStart=performance.now(),remainingMs=()=>adapter.limits.trialMs-(performance.now()-monotonicStart);
     const id=randomUUID(),createdAt=new Date().toISOString(),deadline=Date.now()+adapter.limits.trialMs;
     const source=sourceIdentity();
-    const ledger=createTranscript(adapter.limits.transcriptBytes),g=createGateway({mode,scenario,policyVersion,execution:'local-model',evaluationKind:evaluationKind});
+    const ledger=createTranscript(adapter.limits.transcriptBytes),g=createGateway({mode,scenario,policyVersion,execution:'local-model',evaluationKind:evaluationKind,...(writerBoundary?{experimentVersion:'controlled-writer-boundary-v1',inputOrigin:'host-supplied-synthetic'}:{})});
     const conversations={researcher:initialMessages('researcher'),writer:initialMessages('writer')};
     const actions=[];let model={name:MODEL,digest:MODEL_DIGEST,verified:false},calls=0,revisions=0,status='incomplete',failure=null;
     function execute(actor,tool,payload,fn){

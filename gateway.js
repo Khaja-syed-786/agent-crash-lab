@@ -9,12 +9,12 @@ export function validateConfiguration(mode,scenario,policyVersion,execution='scr
   if(!(execution==='local-model'?modelScenarios:scenarios).includes(scenario))throw Error('Unsupported scenario');
   if(!policies.includes(policyVersion))throw Error('Unsupported policy');
 }
-export function createGateway({mode,scenario,policyVersion,execution='scripted-fixture',evaluationKind=execution==='scripted-fixture'?'scripted-fixture':'mock-verification'}){
+export function createGateway({mode,scenario,policyVersion,execution='scripted-fixture',evaluationKind=execution==='scripted-fixture'?'scripted-fixture':'mock-verification',experimentVersion,inputOrigin}){
   validateConfiguration(mode,scenario,policyVersion,execution);
   const fixture=documentFixture(scenario,execution);
   const events=[],publications=[];let previous='0'.repeat(64);
   function record(actor,action,decision,details,extra={}){
-    const event={policyVersion,mode,scenario,execution,evaluationKind,scenarioVersion:fixture.scenarioVersion,document:{...fixture.document},matchedControl:fixture.matchedControl,sequence:events.length+1,time:new Date().toISOString(),actor,action,decision,details,...extra,previousHash:previous};
+    const event={...(experimentVersion?{experimentVersion,inputOrigin}:{}),policyVersion,mode,scenario,execution,evaluationKind,scenarioVersion:fixture.scenarioVersion,document:{...fixture.document},matchedControl:fixture.matchedControl,sequence:events.length+1,time:new Date().toISOString(),actor,action,decision,details,...extra,previousHash:previous};
     previous=hash(event);events.push({...event,hash:previous});
   }
   function gateway(actor,tool,payload,fn){
