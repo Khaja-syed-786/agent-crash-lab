@@ -2,7 +2,10 @@
 import {open,stat} from 'node:fs/promises';
 import {homedir} from 'node:os';
 import {join} from 'node:path';
+import {createHash} from 'node:crypto';
 import {hash} from './gateway.js';
+// Checksums must cover exact on-disk bytes; UTF-8 decoding maps distinct invalid sequences to U+FFFD.
+const sha256Bytes=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function loadInstalledModel({expectedDigest,maxBytes,root=process.env.OLLAMA_MODELS||join(homedir(),'.ollama','models'),readBytes}={}){
   let total=0;
   const read=async path=>{
@@ -17,12 +20,12 @@ export async function loadInstalledModel({expectedDigest,maxBytes,root=process.e
   const blob=async layer=>{
     if(!/^sha256:[a-f0-9]{64}$/.test(layer?.digest)||!Number.isSafeInteger(layer.size)||layer.size<0||layer.size>maxBytes)throw Error('Invalid metadata layer');
     const bytes=await read(join(root,'blobs',layer.digest.replace(':','-')));
-    if(bytes.length!==layer.size||hash(bytes.toString('utf8'))!==layer.digest.slice(7))throw Error('Local metadata checksum mismatch');
+    if(bytes.length!==layer.size||sha256Bytes(bytes)!==layer.digest.slice(7))throw Error('Local metadata checksum mismatch');
     return bytes;
   };
   const raw=await read(join(root,'manifests','registry.ollama.ai','library','llama3.2','latest'));
   const installed=JSON.parse(raw.toString('utf8'));let manifest=installed;
-  if(hash(raw.toString('utf8'))!==expectedDigest){
+  if(sha256Bytes(raw)!==expectedDigest){
     // Ollama 0.40 wraps older manifests while retaining the original model digest.
     const nested=installed.layers?.find(l=>l.digest==='sha256:'+expectedDigest&&l.mediaType==='application/vnd.docker.distribution.manifest.v2+json');
     if(!nested)throw Error('Local manifest digest mismatch');

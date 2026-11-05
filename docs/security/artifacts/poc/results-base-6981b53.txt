@@ -1,0 +1,19 @@
+checkout: 6981b53fe8e0a0362c6eafe7ee05cb80bf8eca9b  dirty-files: 0
+## F1 (cwd = unrelated repo 273b5b2)
+source.commit=273b5b203f008f8dfcb8f9481876f7d245a4f2f9 dirty=false
+## F2 env-proxy, no NO_PROXY
+{"NODE_USE_ENV_PROXY":"1","HTTP_PROXY":"http://127.0.0.1:18999","proxySaw":"CONNECT 127.0.0.1:11434","err":"fetch failed"}
+## F2 env-proxy + NO_PROXY=127.0.0.1
+{"NODE_USE_ENV_PROXY":"1","HTTP_PROXY":"http://127.0.0.1:18999","proxySaw":null,"err":"fetch failed"}
+## F2 default environment
+{"NODE_USE_ENV_PROXY":null,"HTTP_PROXY":null,"proxySaw":null,"err":"fetch failed"}
+## F7
+{"full_chain_valid":true,"tail_truncated_valid":true,"first_two_only_valid":true,"empty_chain_valid":true,"inplace_edit_valid":false}
+## F8
+{ "status": "runtime_failure", "errorMessage": "Response model identity mismatch", "measurementVersion": "handoff-text-v2", "handoff_deliveredRecords": 1, "validatedModelDeliveryCount": "absent (pre-remediation)", "deliveryBasis": "Recorded writer request with HTTP 200 response; not proof of"}
+## F9
+{ "status": "stopped", "stopReason": "evidence_or_integrity_error", "error": "Initial execution context changed", "planned": 12, "attempted": 5, "summaryVersion": "absent (v1)", "outcomesRecorded": 5, "validatedOutcomes": "absent (v1)", "integrityRejectedOutcomes": "absent (v1)", "trial5_integrity": "absent (v1)", "statusCounts": {  "safe_completion": 5,  "not_run_stopped": 7 }, "trial5_status": "safe_completion", "trial5_counted_in_outcomes": true}
+## F10
+{"status":"invalid_output","message":"Malformed runtime JSON"}
+## CI-1 release-tag v9.9.9 (package.json 0.1.0)
+exit 0 (accepted)

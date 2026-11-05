@@ -1,0 +1,437 @@
+{
+ "harness": "docs/security/artifacts/browser/run-browser-matrix.mjs",
+ "browser": "Google Chrome for Testing 153.0.8010.12",
+ "node": "v22.23.4",
+ "lab": "http://127.0.0.1:5099",
+ "positiveControl": {
+  "seedStatus": 200,
+  "sameOriginRunsStatus": 200,
+  "sameOriginBodyReadable": true
+ },
+ "passes": [
+  {
+   "evilOrigin": "http://127.0.0.1:5199",
+   "runsBefore": 1,
+   "runsAfter": 1,
+   "serverSaw": [
+    {
+     "method": "OPTIONS",
+     "url": "/api/run",
+     "status": 405,
+     "origin": "http://127.0.0.1:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "OPTIONS",
+     "url": "/api/run",
+     "status": 405,
+     "origin": "http://127.0.0.1:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "POST",
+     "url": "/api/run",
+     "status": 403,
+     "origin": "http://127.0.0.1:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": "text/plain;charset=UTF-8"
+    },
+    {
+     "method": "POST",
+     "url": "/api/run",
+     "status": 403,
+     "origin": "http://127.0.0.1:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": "text/plain"
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs?img=<ts>",
+     "status": 404,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs?script=<ts>",
+     "status": 404,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "POST",
+     "url": "/api/run",
+     "status": 403,
+     "origin": "http://127.0.0.1:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": "text/plain"
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs",
+     "status": 200,
+     "origin": "http://127.0.0.1:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs",
+     "status": 200,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/",
+     "status": 200,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs",
+     "status": 403,
+     "origin": "http://127.0.0.1:5199",
+     "host": "evil.test:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs",
+     "status": 200,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    }
+   ],
+   "pageResults": [
+    {
+     "name": "1_cors_post_with_xlr",
+     "clientResolved": false,
+     "error": "TypeError:Failed to fetch"
+    },
+    {
+     "name": "2_cors_post_no_xlr",
+     "clientResolved": false,
+     "error": "TypeError:Failed to fetch"
+    },
+    {
+     "name": "3_nocors_post_xlr",
+     "clientResolved": true,
+     "type": "opaque",
+     "status": 0
+    },
+    {
+     "name": "4_nocors_textplain_post",
+     "clientResolved": true,
+     "type": "opaque",
+     "status": 0,
+     "body": ""
+    },
+    {
+     "name": "5_form_post_textplain",
+     "submitted": true,
+     "note": "request sent to server; cross-origin response not readable by page"
+    },
+    {
+     "name": "6_img_get_runs",
+     "event": "error",
+     "bodyReadable": false
+    },
+    {
+     "name": "7_script_get_runs",
+     "event": "error",
+     "bodyReadable": false
+    },
+    {
+     "name": "8_fetch_get_runs_cors_read",
+     "clientResolved": false,
+     "readable": false,
+     "error": "TypeError:Failed to fetch"
+    },
+    {
+     "name": "9_fetch_get_runs_nocors",
+     "clientResolved": true,
+     "type": "opaque",
+     "status": 0,
+     "bodySample": ""
+    },
+    {
+     "name": "10_iframe_dashboard",
+     "event": "load",
+     "contentReadable": false,
+     "sample": null
+    },
+    {
+     "name": "11_rebind_host",
+     "clientResolved": false,
+     "error": "TypeError:Failed to fetch"
+    }
+   ],
+   "corsFailures": [
+    {
+     "errorText": "net::ERR_FAILED",
+     "blockedReason": null,
+     "corsError": "PreflightMissingAllowOriginHeader"
+    },
+    {
+     "errorText": "net::ERR_FAILED",
+     "blockedReason": null,
+     "corsError": "PreflightMissingAllowOriginHeader"
+    },
+    {
+     "errorText": "net::ERR_BLOCKED_BY_RESPONSE",
+     "blockedReason": "other",
+     "corsError": null
+    },
+    {
+     "errorText": "net::ERR_FAILED",
+     "blockedReason": null,
+     "corsError": "MissingAllowOriginHeader"
+    },
+    {
+     "errorText": "net::ERR_BLOCKED_BY_RESPONSE",
+     "blockedReason": "other",
+     "corsError": null
+    },
+    {
+     "errorText": "net::ERR_FAILED",
+     "blockedReason": null,
+     "corsError": "MissingAllowOriginHeader"
+    }
+   ],
+   "runCreated": false
+  },
+  {
+   "evilOrigin": "http://localhost:5199",
+   "runsBefore": 1,
+   "runsAfter": 1,
+   "serverSaw": [
+    {
+     "method": "OPTIONS",
+     "url": "/api/run",
+     "status": 405,
+     "origin": "http://localhost:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "OPTIONS",
+     "url": "/api/run",
+     "status": 405,
+     "origin": "http://localhost:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "POST",
+     "url": "/api/run",
+     "status": 403,
+     "origin": "http://localhost:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": "text/plain;charset=UTF-8"
+    },
+    {
+     "method": "POST",
+     "url": "/api/run",
+     "status": 403,
+     "origin": "http://localhost:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": "text/plain"
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs?img=<ts>",
+     "status": 404,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "POST",
+     "url": "/api/run",
+     "status": 403,
+     "origin": "http://localhost:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": "text/plain"
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs?script=<ts>",
+     "status": 404,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs",
+     "status": 200,
+     "origin": "http://localhost:5199",
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs",
+     "status": 200,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/",
+     "status": 200,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs",
+     "status": 403,
+     "origin": "http://localhost:5199",
+     "host": "evil.test:5099",
+     "xLabRequest": null,
+     "contentType": null
+    },
+    {
+     "method": "GET",
+     "url": "/api/runs",
+     "status": 200,
+     "origin": null,
+     "host": "127.0.0.1:5099",
+     "xLabRequest": null,
+     "contentType": null
+    }
+   ],
+   "pageResults": [
+    {
+     "name": "1_cors_post_with_xlr",
+     "clientResolved": false,
+     "error": "TypeError:Failed to fetch"
+    },
+    {
+     "name": "2_cors_post_no_xlr",
+     "clientResolved": false,
+     "error": "TypeError:Failed to fetch"
+    },
+    {
+     "name": "3_nocors_post_xlr",
+     "clientResolved": true,
+     "type": "opaque",
+     "status": 0
+    },
+    {
+     "name": "4_nocors_textplain_post",
+     "clientResolved": true,
+     "type": "opaque",
+     "status": 0,
+     "body": ""
+    },
+    {
+     "name": "5_form_post_textplain",
+     "submitted": true,
+     "note": "request sent to server; cross-origin response not readable by page"
+    },
+    {
+     "name": "6_img_get_runs",
+     "event": "error",
+     "bodyReadable": false
+    },
+    {
+     "name": "7_script_get_runs",
+     "event": "error",
+     "bodyReadable": false
+    },
+    {
+     "name": "8_fetch_get_runs_cors_read",
+     "clientResolved": false,
+     "readable": false,
+     "error": "TypeError:Failed to fetch"
+    },
+    {
+     "name": "9_fetch_get_runs_nocors",
+     "clientResolved": true,
+     "type": "opaque",
+     "status": 0,
+     "bodySample": ""
+    },
+    {
+     "name": "10_iframe_dashboard",
+     "event": "load",
+     "contentReadable": false,
+     "sample": null
+    },
+    {
+     "name": "11_rebind_host",
+     "clientResolved": false,
+     "error": "TypeError:Failed to fetch"
+    }
+   ],
+   "corsFailures": [
+    {
+     "errorText": "net::ERR_FAILED",
+     "blockedReason": null,
+     "corsError": "PreflightMissingAllowOriginHeader"
+    },
+    {
+     "errorText": "net::ERR_FAILED",
+     "blockedReason": null,
+     "corsError": "PreflightMissingAllowOriginHeader"
+    },
+    {
+     "errorText": "net::ERR_BLOCKED_BY_RESPONSE",
+     "blockedReason": "other",
+     "corsError": null
+    },
+    {
+     "errorText": "net::ERR_FAILED",
+     "blockedReason": null,
+     "corsError": "MissingAllowOriginHeader"
+    },
+    {
+     "errorText": "net::ERR_BLOCKED_BY_RESPONSE",
+     "blockedReason": "other",
+     "corsError": null
+    },
+    {
+     "errorText": "net::ERR_FAILED",
+     "blockedReason": null,
+     "corsError": "MissingAllowOriginHeader"
+    }
+   ],
+   "runCreated": false
+  }
+ ]
+}

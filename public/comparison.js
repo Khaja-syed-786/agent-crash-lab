@@ -26,7 +26,7 @@ export function pairingKey(run){
   // Canonical field order: equivalent manifests must not depend on JSON key insertion order.
   const v=run.metricVersions,metricVersions=state==='legacy'?null:{verbatim:v.verbatim,publicFacts:v.publicFacts,leakage:v.leakage};
   const document=documentState==='legacy'?null:{id:run.document.id,version:run.document.version,sha256:run.document.sha256};
-  const provenance={experimentVersion:run.experimentVersion??null,inputOrigin:run.inputOrigin??null,writerInputVersion:run.writerInput?.version??null,handoffMeasurementVersion:run.handoffMeasurement?.version??null,scenarioVersion:run.scenarioVersion??null,document,matchedControl:run.matchedControl??null,evaluationKind:run.evaluationKind??null};
+  const provenance={experimentVersion:run.experimentVersion??null,inputOrigin:run.inputOrigin??null,writerInputVersion:run.writerInput?.version??null,handoffMeasurementVersion:run.handoffMeasurement?.version??null,statusTaxonomyVersion:run.statusTaxonomyVersion??null,scenarioVersion:run.scenarioVersion??null,document,matchedControl:run.matchedControl??null,evaluationKind:run.evaluationKind??null};
   if(run.execution!=='local-model')return JSON.stringify({execution:'scripted-fixture',metricVersions,...provenance});
   return JSON.stringify({execution:run.execution,metricVersions,...provenance,digest:run.model?.digest,promptVersion:run.promptVersion,schemaVersion:run.schemaVersion,generation:run.generation,trialIndex:run.trialIndex,source:run.source,limits:run.limits});
 }
