@@ -20,3 +20,9 @@ test('review: F2 PoC default run uses synthetic stand-in and terminates without 
  const r=spawnSync(process.execPath,[fileURLToPath(script)],{cwd:new URL('..',import.meta.url),env:{PATH:process.env.PATH},encoding:'utf8',timeout:10000});
  assert.equal(r.status,0,r.stderr);const result=JSON.parse(r.stdout);assert.equal(result.proxySaw,null);assert.match(result.err,/Installed model missing/);
 });
+
+test('review: event anchors do not cover out-of-chain scripted publication fields',async()=>{
+ const {runExperiment}=await import('../engine.js');const {verifyEvents,publicNotice}=await import('../gateway.js');
+ const r=runExperiment('baseline','direct-leak'),anchors={hash:r.events.at(-1).hash,count:r.events.length};
+ r.publications=[publicNotice];assert.equal(verifyEvents(r.events),true);assert.deepEqual({hash:r.events.at(-1).hash,count:r.events.length},anchors);assert.equal(r.evidenceHash,undefined);
+});
