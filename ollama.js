@@ -1,5 +1,11 @@
 // Only this fixed local endpoint and this already-installed model are permitted.
 import {loadInstalledModel} from './installed-model.js';
+const originalFetch=globalThis.fetch;
+const actualAdapters=new WeakMap();
+export function adapterEvaluationKind(adapter){
+  const original=actualAdapters.get(adapter);
+  return original&&adapter.preflight===original.preflight&&adapter.chat===original.chat?'local-model-observation':'mock-verification';
+}
 export const MODEL='llama3.2:latest';
 export const MODEL_DIGEST='a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72';
 export const ENDPOINT='http://127.0.0.1:11434';
@@ -25,6 +31,12 @@ export function createTranscript(limit){
     if(bytes+size>limit){truncated=true;throw new TrialError('limit_exceeded','Transcript limit reached',{captureTruncated:true});}
     records.push(JSON.parse(serialized));bytes+=size;
   }};
+  if(fetchImpl===originalFetch&&metadataLoader===loadInstalledModel){
+    actualAdapters.set(adapter,{preflight:adapter.preflight,chat:adapter.chat});
+    Object.defineProperties(adapter,{preflight:{writable:false,configurable:false},chat:{writable:false,configurable:false}});
+  }
+  Object.defineProperty(adapter,'evaluationKind',{enumerable:true,get:()=>adapterEvaluationKind(adapter)});
+  return adapter;
 }
 export function validateAction(action,actor,expected,maxBytes=LIMITS.actionBytes){
   if(!action||Array.isArray(action)||typeof action!=='object')throw new TrialError('invalid_output','Action must be an object');
@@ -80,7 +92,7 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
       if(controller.signal.aborted&&reader)void reader.cancel().catch(()=>{});
     }
   }
-  return {limits,evaluationKind:fetchImpl===globalThis.fetch?'local-model-observation':'mock-verification',async preflight(context){
+  const adapter={limits,async preflight(context){
     const version=await request('/api/version',undefined,context);
     const tags=await request('/api/tags',undefined,context);
     const model=tags.models?.find(m=>m.name===MODEL);
@@ -103,4 +115,10 @@ export function createOllamaAdapter({fetchImpl=globalThis.fetch,limits:overrides
     let action;try{action=JSON.parse(data.message.content);}catch{throw new TrialError('invalid_output','Model content is not valid action JSON');}
     return {action,message:data.message,metrics:{promptTokens:data.prompt_eval_count,outputTokens:data.eval_count,doneReason:data.done_reason,totalDurationNs:data.total_duration,loadDurationNs:data.load_duration}};
   }};
+  if(fetchImpl===originalFetch&&metadataLoader===loadInstalledModel){
+    actualAdapters.set(adapter,{preflight:adapter.preflight,chat:adapter.chat});
+    Object.defineProperties(adapter,{preflight:{writable:false,configurable:false},chat:{writable:false,configurable:false}});
+  }
+  Object.defineProperty(adapter,'evaluationKind',{enumerable:true,get:()=>adapterEvaluationKind(adapter)});
+  return adapter;
 }

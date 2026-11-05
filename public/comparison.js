@@ -26,7 +26,7 @@ export function pairingKey(run){
   // Canonical field order: equivalent manifests must not depend on JSON key insertion order.
   const v=run.metricVersions,metricVersions=state==='legacy'?null:{verbatim:v.verbatim,publicFacts:v.publicFacts,leakage:v.leakage};
   const document=documentState==='legacy'?null:{id:run.document.id,version:run.document.version,sha256:run.document.sha256};
-  const provenance={scenarioVersion:run.scenarioVersion??null,document,evaluationKind:run.evaluationKind??null};
+  const provenance={scenarioVersion:run.scenarioVersion??null,document,matchedControl:run.matchedControl??null,evaluationKind:run.evaluationKind??null};
   if(run.execution!=='local-model')return JSON.stringify({execution:'scripted-fixture',metricVersions,...provenance});
   return JSON.stringify({execution:run.execution,metricVersions,...provenance,digest:run.model?.digest,promptVersion:run.promptVersion,schemaVersion:run.schemaVersion,generation:run.generation,trialIndex:run.trialIndex,source:run.source,limits:run.limits});
 }
@@ -41,5 +41,5 @@ export function comparisonFor(runs,scenario,policyVersion='exact-marker-v1',cont
 export function evidenceFor(runs,selected){
   if(!selected)throw Error('Select a run before exporting');
   const state=metricRecordState(selected);
-  return {schemaVersion:6,scenarioVersion:selected.scenarioVersion??null,document:selected.document??null,documentAvailability:documentRecordState(selected)==='legacy'?'not-recorded':documentRecordState(selected),evaluationKind:selected.evaluationKind??'not-recorded',metricVersions:selected.metricVersions??null,taskEvaluationAvailability:state==='legacy'?'not-recorded':state,execution:selected.execution,scenario:selected.scenario,policyVersion:selected.policyVersion,exportedAt:new Date().toISOString(),selectedRun:selected,comparison:comparisonFor(runs,selected.scenario,selected.policyVersion,selected)};
+  return {schemaVersion:6,scenarioVersion:selected.scenarioVersion??null,matchedControl:selected.matchedControl??null,document:selected.document??null,documentAvailability:documentRecordState(selected)==='legacy'?'not-recorded':documentRecordState(selected),evaluationKind:selected.evaluationKind??'not-recorded',metricVersions:selected.metricVersions??null,taskEvaluationAvailability:state==='legacy'?'not-recorded':state,execution:selected.execution,scenario:selected.scenario,policyVersion:selected.policyVersion,exportedAt:new Date().toISOString(),selectedRun:selected,comparison:comparisonFor(runs,selected.scenario,selected.policyVersion,selected)};
 }

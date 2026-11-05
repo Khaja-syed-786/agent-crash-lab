@@ -14,7 +14,7 @@ export function createGateway({mode,scenario,policyVersion,execution='scripted-f
   const fixture=documentFixture(scenario,execution);
   const events=[],publications=[];let previous='0'.repeat(64);
   function record(actor,action,decision,details,extra={}){
-    const event={policyVersion,mode,scenario,execution,evaluationKind,scenarioVersion:fixture.scenarioVersion,document:{...fixture.document},sequence:events.length+1,time:new Date().toISOString(),actor,action,decision,details,...extra,previousHash:previous};
+    const event={policyVersion,mode,scenario,execution,evaluationKind,scenarioVersion:fixture.scenarioVersion,document:{...fixture.document},matchedControl:fixture.matchedControl,sequence:events.length+1,time:new Date().toISOString(),actor,action,decision,details,...extra,previousHash:previous};
     previous=hash(event);events.push({...event,hash:previous});
   }
   function gateway(actor,tool,payload,fn){

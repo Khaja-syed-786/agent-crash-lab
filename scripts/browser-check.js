@@ -127,7 +127,7 @@ try{
         $('export').click();const e=JSON.parse(await downloaded.text());
         assert(e.selectedRun.scenario===scenario&&e.selectedRun.documentDelivered,'wrong document delivery');
         assert(e.evaluationKind==='mock-verification','mock verification not labeled');
-        assert(e.scenarioVersion===scenario+'-model-v1','scenario version missing');
+        assert(e.scenarioVersion===scenario+'-model-v2','scenario version missing');
         assert(e.document.sha256===e.selectedRun.events.find(x=>x.action==='read_document').document.sha256,'document provenance missing');
         assert($('outcome').textContent.includes('mocked verification only'),'missing mock disclaimer');
       }
