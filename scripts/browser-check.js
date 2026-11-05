@@ -63,6 +63,10 @@ try{
   const report=await evaluate(`(async()=>{
     const $=id=>document.getElementById(id);
     const assert=(ok,message)=>{if(!ok)throw Error(message);};
+    assert(document.title==='OrbitFault | Test AI agent boundaries. Trace what happened.','page title branding mismatch');
+    assert(document.querySelector('h1').textContent.replace(/\\s+/g,' ').trim()==='Test AI agent boundaries. Trace what happened.','tagline mismatch');
+    assert(document.querySelector('meta[name=description]').content==='An experimental test harness for AI agent failures, policy enforcement, and execution evidence.','description mismatch');
+    assert(document.querySelector('header').getAttribute('aria-label')==='OrbitFault','accessible branding mismatch');
     const wait=async predicate=>{for(let i=0;i<200;i++){if(predicate())return;await new Promise(r=>setTimeout(r,20));}throw Error('UI timeout: '+$('status').textContent);};
     let downloaded;
     const originalCreateObjectURL=URL.createObjectURL,originalClick=HTMLAnchorElement.prototype.click;

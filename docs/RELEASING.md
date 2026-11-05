@@ -1,6 +1,6 @@
-# Release process
+# OrbitFault release process
 
-This experimental research lab is MIT licensed (see [LICENSE](../LICENSE)). Node.js 22 and 24 are supported and tested; no dependencies, custom secrets, Ollama or inference are required for CI/releases. This preparation does not create a tag or release. The release workflow has not yet been exercised by a real version tag.
+[OrbitFault](https://github.com/Khaja-syed-786/orbitfault), formerly Agent Crash Lab, is MIT licensed (see [LICENSE](../LICENSE)). Node.js 22 and 24 are supported and tested; no dependencies, custom secrets, Ollama or inference are required for CI/releases. This preparation does not create a tag or release. The release workflow has not yet been exercised by a real version tag.
 
 ## Future maintainer steps
 

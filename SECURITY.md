@@ -1,8 +1,8 @@
-# Security policy
+# OrbitFault security policy
 
 ## Supported use and threat model
 
-Agent Crash Lab is an experimental, single-user localhost research lab. Use the current main branch; no published release or long-term support schedule is established. Use only synthetic data on a trusted machine, with the dashboard bound to loopback and accessed at http://127.0.0.1:5080 (or its configured port). Do not expose the server through a public listener, tunnel, reverse proxy or shared workstation service.
+OrbitFault (formerly Agent Crash Lab) is an experimental, single-user localhost research lab. Use the current main branch; no published release or long-term support schedule is established. Use only synthetic data on a trusted machine, with the dashboard bound to loopback and accessed at http://127.0.0.1:5080 (or its configured port). Do not expose the server through a public listener, tunnel, reverse proxy or shared workstation service.
 
 Host/Origin checks, a custom mutation header, local-address checks and browser security headers constrain the supported HTTP interface. They are not authentication against another local process, compromised browser extensions, hostile in-process code or an administrator. The action gateway is cooperative in-process control, not an OS/container sandbox. Both policies and the evaluator recognize only fixture markers; neither is general protection against information leakage or prompt injection.
 
@@ -12,7 +12,7 @@ Evidence hashes are unsigned consistency checks, not authenticated audit logs. V
 
 ## Reporting channel
 
-For non-sensitive reports only, the existing, verified public reporting channel is this repository's [GitHub Issues page](https://github.com/Khaja-syed-786/agent-crash-lab/issues). **Public Issues are for non-sensitive reports only. Confidential reporting is not configured.** The repository's private vulnerability-reporting endpoint was checked during preparation of this document and reported disabled. No private email, private advisory channel or alternative contact is claimed here.
+For non-sensitive reports only, the existing, verified public reporting channel is this repository's [GitHub Issues page](https://github.com/Khaja-syed-786/orbitfault/issues). **Public Issues are for non-sensitive reports only. Confidential reporting is not configured.** The repository's private vulnerability-reporting endpoint was checked during preparation of this document and reported disabled. No private email, private advisory channel or alternative contact is claimed here.
 
 For a report safe to discuss publicly, include a sanitized description, affected commit/Node/browser version, minimal synthetic reproduction, expected versus observed behavior and whether the result used a script, mock or actual model. Provide aggregate outcomes rather than raw model prompts/responses. Do not test systems you do not control, run paid/live inference, or publish real secrets to demonstrate impact.
 
