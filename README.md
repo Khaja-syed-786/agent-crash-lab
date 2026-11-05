@@ -8,6 +8,19 @@ A local two-role data-leak regression lab. **Scripted mode** is deterministic an
 
 **Scripted** runs use predetermined candidates/fallbacks. **Mocked** tests supply artificial model responses to verify plumbing. **Actual-model** observations come from explicit local Ollama runs and retain real requests/responses privately. These evidence types are not interchangeable; automated test success is not a live-model protection result.
 
+## Get the code
+
+Install Git and a current Node.js 22 or 24 release (including npm). Then, from a terminal:
+
+```powershell
+git clone https://github.com/Khaja-syed-786/agent-crash-lab.git
+cd agent-crash-lab
+```
+
+Run the commands below from this directory, where package.json is located. There is no npm dependency install step: do not run npm ci (there is no lockfile). Ollama, model files, API keys, Docker and a browser are not needed for tests or the terminal demo. If PowerShell blocks npm.ps1, use `npm.cmd test` / `npm.cmd start` without changing your execution policy.
+
+New contributors: see [CONTRIBUTING.md](CONTRIBUTING.md). Security reports: read [SECURITY.md](SECURITY.md) before posting details.
+
 ## Quick scripted demo (no model)
 
 Node.js 22 and 24 are the supported, CI-tested versions; there are no npm dependencies to install. This command runs baseline/protected synthetic raw-leak fixtures and prints separate block/leak/task outcomes:
@@ -24,12 +37,17 @@ Use Node.js 22 or 24. No npm dependencies or install step required.
 
 ```
 npm test
+# Optional dashboard; leave this running in its own terminal:
 npm start
 ```
 
+Stop your dashboard with Ctrl+C in that terminal. If port 5080 is already occupied, leave the other process alone and select a free port before starting: PowerShell `$env:PORT=5081; npm start` or POSIX shell `PORT=5081 npm start`. Use the selected port in the URL.
+
 Open http://127.0.0.1:5080. Use this exact loopback address. Click Run baseline, then Run protected test. Export evidence JSON to retain results; history is in memory (last 50 runs) and disappears on restart.
 
-For automated browser verification, run `node scripts/browser-check.js`. It uses a locally installed Chrome/Edge (or `LAB_BROWSER`), requires no packages, and writes ignored evidence and a screenshot under `results/`.
+The dashboard defaults to Scripted fixture. Keep that selection for a model-free demo. The Local Ollama selector, the single-trial commands below, and any --execute-live command opt into real inference and are not part of contributor setup.
+
+For optional automated browser verification, run `node scripts/browser-check.js`. It uses a locally installed Chrome/Edge (or `LAB_BROWSER`), requires no packages, and writes ignored evidence and a screenshot under `results/`.
 
 ## Continuous integration
 
@@ -59,7 +77,7 @@ Statuses distinguish `safe_completion`, `completed_with_leak`, `refused`, `block
 
 New exports use schema 6 and include both task metric versions plus the leakage version. Legacy export files remain unchanged. Model exports carry immutable request snapshots, actual bounded raw responses, parsed proposals, action/gateway records, publications, independent outcomes, source code identity, model digest, prompt/generation settings, token counts, errors, and an unsigned evidence hash. Model comparisons additionally require matching execution, model digest, prompt/schema versions, generation settings/seed, trial index, source identity, and limits, plus matching metric versions. Historical records without the new metric show it as not recorded; they are never silently re-evaluated. History retains the last 50 runs; explicitly export observations to keep them.
 
-`node scripts/browser-check.js --mock-model` verifies the scripted browser matrix plus opt-in model UI/pairing/export with an explicitly marked mock runner; it makes no live inference calls. The 36-trial batch is deferred. See [the implementation plan](docs/LOCAL_MODEL_PLAN.md) and [pilot observations](docs/LOCAL_MODEL_PILOT.md).
+`node scripts/browser-check.js --mock-model` verifies the scripted browser matrix plus opt-in model UI/pairing/export with an explicitly marked mock runner; it makes no live inference calls. The original proposed 36-trial design remains deferred; it is different from the three completed 12-slot batches reported above. See [the implementation plan](docs/LOCAL_MODEL_PLAN.md) and [pilot observations](docs/LOCAL_MODEL_PILOT.md).
 
 ## Bounded evaluation experiments
 
