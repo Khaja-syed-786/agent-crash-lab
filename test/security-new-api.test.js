@@ -61,7 +61,9 @@ test('F2: Node routing assumption behind the bypass rule (ephemeral loopback por
     const none=await delta({});if(none.proxy===0)return t.skip('this Node build does not honour NODE_USE_ENV_PROXY');
     assert.deepEqual(await delta({NO_PROXY:'127.0.0.1'}),{proxy:0,direct:1});
     assert.deepEqual(await delta({NO_PROXY:'localhost'}),{proxy:1,direct:0});
-    assert.deepEqual(await delta({no_proxy:'',NO_PROXY:'127.0.0.1'}),{proxy:1,direct:0});
+    // Windows cannot represent distinct uppercase/lowercase environment keys in a child.
+    if(process.platform!=='win32')assert.deepEqual(await delta({no_proxy:'',NO_PROXY:'127.0.0.1'}),{proxy:1,direct:0});
+    else assert.deepEqual(await delta({no_proxy:'localhost'}),{proxy:1,direct:0});
   }finally{proxy.close();direct.close();}
 });
 // A recording global fetch is installed before ollama.js loads, so the adapter treats it as the built-in fetch.
@@ -72,7 +74,7 @@ let message='no error';try{await createOllamaAdapter({metadataLoader:async()=>({
 console.log(JSON.stringify({message,calls}));`;
 const runAdapter=async env=>{const r=await child(['--input-type=module','-e',ADAPTER],env);assert.equal(r.code,0);return JSON.parse(r.out.trim().split('\n').at(-1));};
 test('F2: adapter refuses before any transport call without a bypass, and when lowercase no_proxy masks NO_PROXY',async()=>{
-  for(const env of [{NODE_USE_ENV_PROXY:'1',HTTP_PROXY:P},{NODE_USE_ENV_PROXY:'1',HTTP_PROXY:P,no_proxy:'',NO_PROXY:'127.0.0.1'}]){
+  for(const env of [{NODE_USE_ENV_PROXY:'1',HTTP_PROXY:P},process.platform==='win32'?{NODE_USE_ENV_PROXY:'1',HTTP_PROXY:P,no_proxy:'localhost'}:{NODE_USE_ENV_PROXY:'1',HTTP_PROXY:P,no_proxy:'',NO_PROXY:'127.0.0.1'}]){
     const r=await runAdapter(env);assert.match(r.message,/Environment proxy enabled without a NO_PROXY bypass/);assert.deepEqual(r.calls,[]);
   }
 });

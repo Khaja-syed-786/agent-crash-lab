@@ -51,7 +51,7 @@ export function validateAction(action,actor,expected,maxBytes=LIMITS.actionBytes
 // bypass tokens are accepted here. Any HTTP proxy spelling counts as configured (conservative: may refuse where Node would go direct).
 const LOOPBACK_BYPASS=new Set(['*','127.0.0.1','127.0.0.1:11434']);
 export function environmentProxyActive(env=process.env,execArgv=process.execArgv){
-  const enabled=['1','true'].includes(String(env.NODE_USE_ENV_PROXY??'').toLowerCase())||execArgv.includes('--use-env-proxy')||/(^|\s)--use-env-proxy(\s|$)/.test(env.NODE_OPTIONS??'');
+  const enabled=['1','true'].includes(String(env.NODE_USE_ENV_PROXY??'').toLowerCase())||execArgv.includes('--use-env-proxy')||/(^|[\s"'])--use-env-proxy([\s"']|$)/.test(env.NODE_OPTIONS??'');
   if(!enabled||!['HTTP_PROXY','http_proxy'].some(key=>env[key]))return false; // ENDPOINT is http:, so HTTPS_PROXY does not apply
   return !String(env.no_proxy??env.NO_PROXY??'').split(/[\s,]+/).some(token=>LOOPBACK_BYPASS.has(token.toLowerCase()));
 }

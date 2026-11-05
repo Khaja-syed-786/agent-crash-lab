@@ -1,5 +1,7 @@
 # Agent Crash Lab security assessment
 
+Maintainer import note: this is the supplied assessment, not a blanket endorsement of its claims. See [independent remediation review](REMEDIATION_REVIEW.md) for local reproductions, additional fixes, platform differences and actual verification.
+
 *docs/SECURITY_ASSESSMENT.md. Evidence-based security assessment of [Khaja-syed-786/agent-crash-lab](https://github.com/Khaja-syed-786/agent-crash-lab) at commit `6981b53fe8e0a0362c6eafe7ee05cb80bf8eca9b`. Assessed on 2026-11-05.*
 
 Source citations link to the assessed commit. In this document, "B" stands for `https://github.com/Khaja-syed-786/agent-crash-lab/blob/6981b53fe8e0a0362c6eafe7ee05cb80bf8eca9b`. All model responses were mocked, and no live inference was run. All test data was synthetic. No secret values appear in this document. **Revision 2 (remediation branch):** Sections A.1 and G.0 describe the remediation changes made after the original assessment. Where those sections and the original text below disagree about fix status, A.1 and G.0 are current. Findings, reproductions and ratings are unchanged. Reproduction scripts and browser-test artifacts are exported under [docs/security/artifacts/](security/artifacts/). They are sanitized, so temporary workspace paths in the original text are historical and not durable evidence.

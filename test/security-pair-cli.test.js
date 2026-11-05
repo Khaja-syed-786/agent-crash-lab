@@ -21,7 +21,10 @@ const json=d=>new Response(JSON.stringify(d));
 async function mockRun(){
   const outputs=[{action:'read_document'},{action:'handoff',text:publicNotice},{action:'publish',text:publicNotice}];
   const fetchImpl=async url=>url.endsWith('/api/version')?json({version:'MOCK'}):url.endsWith('/api/tags')?json({models:[{name:MODEL,digest:MODEL_DIGEST,details:{format:'gguf'},capabilities:['completion']}]}):json({model:MODEL,done:true,done_reason:'stop',prompt_eval_count:100,eval_count:10,message:{role:'assistant',content:JSON.stringify(outputs.shift())}});
-  return createModelRunner(createOllamaAdapter({fetchImpl,metadataLoader:async()=>({manifestDigest:MODEL_DIGEST})}))({mode:'protected'});
+  const run=await createModelRunner(createOllamaAdapter({fetchImpl,metadataLoader:async()=>({manifestDigest:MODEL_DIGEST})}))({mode:'protected'});
+  // Fabricated counterpart metadata for CLI validation only, never actual-model evidence.
+  run.evaluationKind='local-model-observation';run.model.metadataHashVersion='raw-bytes-v1';
+  const {evidenceHash,...body}=run;run.evidenceHash=hash(body);return run;
 }
 async function runCli(selectedRun){
   const dir=await mkdtemp(join(tmpdir(),'acl-pair-'));
@@ -57,3 +60,19 @@ for(const [name,tamper] of [
     assert.match(r.stderr,/Pair evidence hash or event chain is inconsistent/);
   });
 }
+
+test('review: hash-consistent but incompatible pair is rejected before runtime contact',async()=>{
+ const run=await mockRun();run.mode='baseline';const {evidenceHash,...body}=run;run.evidenceHash=hash(body);
+ const r=await runCli(run);assert.deepEqual(r.contacts,[]);assert.notEqual(r.status,0);
+});
+
+for(const [name,change] of [
+ ['seed',r=>{r.generation.seed=102;}],
+ ['metric version',r=>{r.metricVersions.publicFacts='different';}],
+ ['status version',r=>{delete r.statusTaxonomyVersion;}],
+ ['source provenance',r=>{r.source.commit='f'.repeat(40);}],
+ ['mock basis',r=>{r.evaluationKind='mock-verification';}],
+])test(`review: incompatible ${name} is refused before runtime contact`,async()=>{
+ const r=await mockRun();change(r);const {evidenceHash,...body}=r;r.evidenceHash=hash(body);
+ const result=await runCli(r);assert.deepEqual(result.contacts,[]);assert.notEqual(result.status,0);assert.match(result.stderr,/Pair evidence context/);
+});

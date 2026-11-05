@@ -63,3 +63,7 @@ Both were recorded with Google Chrome for Testing 153.0.8010.12 and Node v22.23.
 - public HTTPS origins, including Private Network Access behaviour;
 - extensions or CORS-relaxing flags;
 - a resolver that changes answers mid-session.
+
+## Independent import review
+
+See [the maintainer review](../../REMEDIATION_REVIEW.md). Saved JSON/text outputs here remain the supplier's historical artifacts, not results from the maintainer's machine. Fresh local logs stay under ignored results/. The F2 PoC now reroutes its nominal runtime URL to an ephemeral synthetic stand-in before invoking native fetch; its default and NO_PROXY cases cannot contact installed Ollama. Do not run the fixed-port routing matrix while a runtime owns port 11434. The browser harness obtains its version from CDP and asserts its negative-control invariants; set CHROME explicitly on Windows.
