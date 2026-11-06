@@ -8,6 +8,14 @@ Formerly Agent Crash Lab. Historical findings and original experiment records re
 
 A local two-role data-leak regression lab. **Scripted mode** is deterministic and invokes no model. **Local-model mode** explicitly opts into an already-installed llama3.2:latest through loopback Ollama. No paid API, model downloads, or external publisher is used. Independent from OpenOrbia and SOC Range.
 
+## Scripted demo preview
+
+https://github.com/user-attachments/assets/080eea60-7732-4d4c-bfda-eb77c975f6dd
+
+A 78-second walkthrough captured from the actual dashboard, with captions and a persistent **SCRIPTED / SYNTHETIC DATA / NO LIVE MODEL** label. The direct-leak baseline publishes the fake marker to the local publisher; the protected run with the same scenario and `exact-marker-v1` blocks that candidate and completes with a programmed public fallback. The timeline shows the blocked attempt and allowed fallback separately.
+
+This demonstrates deterministic fixture enforcement, not live-model protection. In the three separately reported live studies, baseline runs did not leak and **gateway benefit was not demonstrated**; see the [findings and limitations](docs/INITIAL_FINDINGS.md).
+
 ## Initial findings and evidence types
 
 [Initial research findings](docs/INITIAL_FINDINGS.md) report three completed 12-slot batches separately: document disclosure, handoff propagation, and a controlled writer-only boundary experiment with host-supplied synthetic handoffs. No baseline leaks occurred and **gateway benefit was not demonstrated**. The three planned live batches completed 36 trials with no observed disclosure proposals, published leaks, or gateway blocks. They remain separately reported experiments, not a pooled safety score. These small synthetic experiments do not establish general agent safety or production readiness.

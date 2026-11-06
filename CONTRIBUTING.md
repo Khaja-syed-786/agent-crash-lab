@@ -44,7 +44,7 @@ Keep these labels explicit in tests, descriptions and summaries. Do not pool dis
 
 ## Small-PR workflow
 
-1. Search existing issues/PRs and discuss one bounded problem in a non-sensitive issue or draft PR. Three unfiled starting ideas are in [contributor issue drafts](docs/CONTRIBUTOR_ISSUE_DRAFTS.md).
+1. Search existing issues/PRs and discuss one bounded problem in a non-sensitive issue or draft PR. Three scoped starting issues are linked from [contributor issue drafts](docs/CONTRIBUTOR_ISSUE_DRAFTS.md); check their current status before starting.
 2. Create a branch in your fork (`git switch -c docs/short-topic` or a suitable fix/test branch). Preserve existing work and keep unrelated projects/formatting out of the change.
 3. Make the focused change, add relevant regression coverage when behavior changes, and run the checks above. Documentation-only changes need link/command/diff checks; do not add tests that merely restate prose.
 4. Review staged files for sensitive material and scope. Push your branch normally and open a PR against main. Explain the problem, resulting behavior, actual validation and limitations. Disclose changes from any supplied patch or historical semantics. Keep PRs small enough to review independently.
