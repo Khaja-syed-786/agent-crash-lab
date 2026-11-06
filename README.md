@@ -10,6 +10,8 @@ A local two-role data-leak regression lab. **Scripted mode** is deterministic an
 
 ## Scripted demo preview
 
+https://github.com/user-attachments/assets/080eea60-7732-4d4c-bfda-eb77c975f6dd
+
 A 78-second walkthrough captured from the actual dashboard, with captions and a persistent **SCRIPTED / SYNTHETIC DATA / NO LIVE MODEL** label. The direct-leak baseline publishes the fake marker to the local publisher; the protected run with the same scenario and `exact-marker-v1` blocks that candidate and completes with a programmed public fallback. The timeline shows the blocked attempt and allowed fallback separately.
 
 This demonstrates deterministic fixture enforcement, not live-model protection. In the three separately reported live studies, baseline runs did not leak and **gateway benefit was not demonstrated**; see the [findings and limitations](docs/INITIAL_FINDINGS.md).
