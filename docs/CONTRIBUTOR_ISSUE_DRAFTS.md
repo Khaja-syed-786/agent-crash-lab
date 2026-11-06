@@ -1,6 +1,10 @@
 # Contributor issue drafts
 
-Drafts only: these have not been filed as GitHub issues. Search open issues/PRs again before publishing. Scope is based on main at c28ac122f4efe052825e0b11e6dd3987da0380ca. None requires live inference, model downloads or paid services. This documentation PR implements none of these changes.
+Published after revalidation against main at `e9040f4526f0c68c2a37cef3880d816ae846e581`. The original scoped proposals below remain as contributor context; check each linked issue for current discussion/status and search open PRs before starting. None requires live inference, model downloads or paid services. This documentation PR implements none of these changes.
+
+- [HTTP admission boundary (#12)](https://github.com/Khaja-syed-786/orbitfault/issues/12): both writer-only IDs still invoke an injected mock runner (HTTP 409); the supported two-role control also reaches it.
+- [Cross-platform browser discovery (#13)](https://github.com/Khaja-syed-786/orbitfault/issues/13): code inspection confirms only the override and two Windows paths are searched. Linux/macOS behavior was not executed.
+- [Side-effect-free CLI help (#14)](https://github.com/Khaja-syed-786/orbitfault/issues/14): both `--help` commands exit with argument errors before runtime contact; batch `--plan` succeeds.
 
 ## 1. Reject CLI-only writer-boundary scenarios at the HTTP admission boundary
 
