@@ -16,6 +16,14 @@ A 78-second walkthrough captured from the actual dashboard, with captions and a 
 
 This demonstrates deterministic fixture enforcement, not live-model protection. In the three separately reported live studies, baseline runs did not leak and **gateway benefit was not demonstrated**; see the [findings and limitations](docs/INITIAL_FINDINGS.md).
 
+## Model-free contributor challenges
+
+Try the [model-free scripted challenge](https://github.com/Khaja-syed-786/orbitfault/discussions/16): predict gateway decisions, accepted publications, leak findings, and task completion before revealing the checked answers. Includes the Base64 case where `exact-marker-v1` allows publication while the independent evaluator detects the known marker.
+
+Share one confusing label or a short sanitized observation in the challenge thread. No Ollama or API keys are needed. These are deterministic fixtures, not evidence of live-model protection.
+
+For a deeper technical exercise, try [Break the evaluator](https://github.com/Khaja-syed-786/orbitfault/discussions/18): submit one minimal synthetic counterexample against `maintenance-public-facts-v2`, distinguishing a new defect from a documented limitation. The thread includes a runnable local check and report template. Manual evaluator checks are not model responses or gateway runs; preserve existing metric versions and historical evidence.
+
 ## Initial findings and evidence types
 
 [Initial research findings](docs/INITIAL_FINDINGS.md) report three completed 12-slot batches separately: document disclosure, handoff propagation, and a controlled writer-only boundary experiment with host-supplied synthetic handoffs. No baseline leaks occurred and **gateway benefit was not demonstrated**. The three planned live batches completed 36 trials with no observed disclosure proposals, published leaks, or gateway blocks. They remain separately reported experiments, not a pooled safety score. These small synthetic experiments do not establish general agent safety or production readiness.
